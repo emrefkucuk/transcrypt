@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Güvenli Dosya Transfer Sistemi</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border: none;
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+        .tab-content {
+            padding: 20px;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .secret-key {
+            font-family: monospace;
+            background: #f1f1f1;
+            padding: 8px;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .option-card {
+            cursor: pointer;
+            transition: all 0.3s;
+            height: 100%;
+        }
+        .option-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        .option-card.selected {
+            border-color: #007bff;
+            border-width: 2px;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        .generating-indicator {
+            display: none;
+        }
+        .generating-indicator.show {
+            display: flex;
+            align-items: center;
+        }
+        .spinner-border {
+            margin-right: 10px;
+        }
+        .progress {
+            height: 25px;
+        }
+        .log-container {
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+        .log-entry.info { color: #0d6efd; }
+        .log-entry.success { color: #198754; }
+        .log-entry.error { color: #dc3545; }
+        .log-entry.warning { color: #fd7e14; }
+        .file-info {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        #stegoPrompt {
+            resize: vertical;
+            min-height: 100px;
+        }
+        #stegoMessage {
+            resize: vertical;
+            min-height: 150px;
+            background-color: #f8f9fa;
+        }
+        #encryptedMessage {
+            resize: vertical;
+            min-height: 150px;
+        }
+        .room-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .integrity-result {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+        .integrity-success {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+        }
+        .integrity-error {
+            background-color: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+        .stego-image-container {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .stego-image-container img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .info-text {
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">Güvenli Dosya Transfer Sistemi</h1>
+
+        <!-- Initial Options Section -->
+        <div id="initialOptions" class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Ne yapmak istiyorsunuz?</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card option-card" id="createRoomCard" onclick="showCreateRoomOptions()">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-plus-circle fs-1 text-primary mb-3"></i>
+                                <h5>Yeni Oda Oluştur</h5>
+                                <p class="text-muted">Dosya paylaşımı için yeni bir oda oluşturun</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card option-card" id="joinRoomCard" onclick="showJoinRoomOptions()">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-door-open fs-1 text-primary mb-3"></i>
+                                <h5>Odaya Katıl</h5>
+                                <p class="text-muted">Var olan bir odaya katılın</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Room Options -->
+        <div id="createRoomOptions" class="card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Oda Oluşturma Seçenekleri</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </button>
+            </div>
+            <div class="card-body">
+                <p>Secret key nasıl paylaşılsın?</p>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="card option-card" onclick="selectKeyOption('direct')">
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="keyOption" id="directOption" value="direct">
+                                    <label class="form-check-label w-100" for="directOption">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-key fs-2 text-primary me-2"></i>
+                                            <h5 class="mb-0">Doğrudan</h5>
+                                        </div>
+                                        <p class="text-muted mb-0">Secret key düz metin olarak paylaşılır</p>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card option-card" onclick="selectKeyOption('stego')">
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="keyOption" id="stegoOption" value="stego">
+                                    <label class="form-check-label w-100" for="stegoOption">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-file-earmark-lock fs-2 text-primary me-2"></i>
+                                            <h5 class="mb-0">Metin Gizleme</h5>
+                                        </div>
+                                        <p class="text-muted mb-0">Secret key doğal bir metin içinde gizlenir</p>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card option-card" onclick="selectKeyOption('image')">
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="keyOption" id="imageOption" value="image">
+                                    <label class="form-check-label w-100" for="imageOption">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-image-fill fs-2 text-primary me-2"></i>
+                                            <h5 class="mb-0">Resim Gizleme</h5>
+                                        </div>
+                                        <p class="text-muted mb-0">Secret key bir resim içinde gizlenir (LSB)</p>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Steganography Prompt (Hidden by Default) -->
+                <div id="stegoPromptContainer" class="mb-4" style="display: none;">
+                    <label for="stegoPrompt" class="form-label">Şifreleme için mesaj temasi (opsiyonel):</label>
+                    <textarea class="form-control" id="stegoPrompt" rows="3" placeholder="Örneğin: 'Güvenli dosya paylaşımı hakkında bir mesaj yaz'"></textarea>
+                    <div class="form-text">Bu temayla ilgili doğal bir mesaj oluşturulacak ve içine secret key gizlenecektir.</div>
+                </div>
+
+                <!-- Image Upload (Hidden by Default) -->
+                <div id="imageUploadContainer" class="mb-4" style="display: none;">
+                    <label for="stegoImage" class="form-label">Secret key gizlenecek resmi seçin:</label>
+                    <input class="form-control" type="file" id="stegoImage" accept="image/*">
+                    <div class="form-text">
+                        Desteklenen formatlar: PNG, JPG, JPEG, BMP, TIFF, WEBP<br>
+                        Secret key resmin içine LSB (en önemsiz bitler) yöntemiyle gizlenecektir.
+                    </div>
+                </div>
+
+                <div class="generating-indicator mb-3" id="generatingIndicator">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                    <span>Oda oluşturuluyor, lütfen bekleyin...</span>
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-primary" id="createRoomBtn" onclick="createRoom()">Oda Oluştur</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Room Options -->
+        <div id="joinRoomOptions" class="card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Odaya Katıl</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </button>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="joinTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="direct-tab" data-bs-toggle="tab" data-bs-target="#direct" type="button" role="tab">Secret Key Gir</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="encrypted-tab" data-bs-toggle="tab" data-bs-target="#encrypted" type="button" role="tab">Şifreli Mesaj Gir</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image" type="button" role="tab">Resim Yükle</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="joinTabsContent">
+                    <div class="tab-pane fade show active" id="direct" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="secretKey" class="form-label">Secret Key</label>
+                            <input type="text" class="form-control" id="secretKey" placeholder="Secret Key'i buraya girin">
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" onclick="joinRoomWithKey()">Odaya Katıl</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="encrypted" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="encryptedMessage" class="form-label">Şifreli Mesaj</label>
+                            <textarea class="form-control" id="encryptedMessage" placeholder="Şifreli mesajı buraya yapıştırın"></textarea>
+                            <div class="form-text">Şifreli mesaj içerisinden secret key çıkarılıp otomatik olarak odaya katılım sağlanacaktır.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" onclick="extractKeyAndJoin()">Secret Key'i Çıkar ve Katıl</button>
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="image" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="stegoImageUpload" class="form-label">Şifreli Resim</label>
+                            <input class="form-control" type="file" id="stegoImageUpload" accept="image/*">
+                            <div class="form-text">Resim içerisine gizlenmiş secret key otomatik olarak çıkarılıp odaya katılım sağlanacaktır.</div>
+                        </div>
+                        <div class="d-grid">
+                            <button class="btn btn-primary" onclick="extractKeyFromImageAndJoin()">Secret Key'i Çıkar ve Katıl</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Created with Direct Key -->
+        <div id="roomCreatedDirect" class="card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Oda Oluşturuldu</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </button>
+            </div>
+            <div class="card-body">
+                <p>Secret Key oluşturuldu. Bu anahtarı dosya alacak kişi ile paylaşın:</p>
+                <div class="secret-key mb-3" id="generatedKey"></div>
+                <div class="d-flex gap-2 mb-4">
+                    <button class="btn btn-secondary" onclick="copyToClipboard('generatedKey')">
+                        <i class="bi bi-clipboard"></i> Kopyala
+                    </button>
+                    <button class="btn btn-primary" onclick="continueAsSender()">
+                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Created with Steganographic Key -->
+        <div id="roomCreatedStego" class="card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Gizli Anahtarlı Oda Oluşturuldu</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </button>
+            </div>
+            <div class="card-body">
+                <p>Aşağıdaki mesajı alıcı ile paylaşın. Secret key bu mesajın içinde gizli olarak saklanmıştır:</p>
+                <div class="mb-3">
+                    <label for="stegoMessage" class="form-label">Gizli Anahtarlı Mesaj:</label>
+                    <textarea class="form-control" id="stegoMessage" readonly></textarea>
+                </div>
+                <div class="d-flex gap-2 mb-4">
+                    <button class="btn btn-secondary" onclick="copyToClipboard('stegoMessage')">
+                        <i class="bi bi-clipboard"></i> Mesajı Kopyala
+                    </button>
+                    <button class="btn btn-primary" onclick="continueAsSender()">
+                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Room Created with Image Steganography -->
+        <div id="roomCreatedImage" class="card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Resim Gizli Oda Oluşturuldu</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </button>
+            </div>
+            <div class="card-body">
+                <p>Secret key resmin içine başarıyla gizlendi. Bu resmi odaya girecek kişi ile paylaşın:</p>
+                
+                <div class="stego-image-container">
+                    <img id="stegoImagePreview" src="" alt="Steganographic Image">
+                </div>
+                
+                <div class="d-flex gap-2 mb-4">
+                    <button class="btn btn-secondary" onclick="downloadStegoImage()">
+                        <i class="bi bi-download"></i> Resmi İndir
+                    </button>
+                    <button class="btn btn-primary" onclick="continueAsSender()">
+                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                    </button>
+                </div>
+                
+                <div class="info-text">
+                    <i class="bi bi-info-circle"></i> Bu resim görsel olarak orijinalinden farksızdır, ancak içinde odanın secret key'i gizlenmiştir.
+                    Karşı taraf bu resmi yükleyerek odaya otomatik olarak katılabilir.
+                </div>
+            </div>
+        </div>
+
+        <!-- File Transfer Interface -->
+        <div id="fileTransfer" class="card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Dosya Transferi</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="leaveRoom()">
+                    <i class="bi bi-box-arrow-right"></i> Odadan Ayrıl
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="room-info">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Bağlantı Durumu:</strong> <span id="connectionStatus">Bağlanıyor...</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between">
+                                <p><strong>Gönderici:</strong> <span id="senderCount">0</span></p>
+                                <p><strong>Alıcı:</strong> <span id="receiverCount">0</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sender Interface -->
+                <div id="senderInterface" style="display: none;">
+                    <h5 class="mb-3">Dosya Gönder</h5>
+                    <div class="mb-3">
+                        <label for="fileInput" class="form-label">Göndermek istediğiniz dosyayı seçin:</label>
+                        <input class="form-control" type="file" id="fileInput">
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">Şifreleme Seçenekleri</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="encryptionMethod" class="form-label">Şifreleme Metodu:</label>
+                                <select class="form-select" id="encryptionMethod">
+                                    <option value="aes-256-gcm">AES-256-GCM (Varsayılan)</option>
+                                    <option value="none">Şifrelemesiz</option>
+                                </select>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="integrityCheck" checked>
+                                <label class="form-check-label" for="integrityCheck">
+                                    Bütünlük Doğrulama (SHA-256)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button class="btn btn-primary" id="sendFileBtn" onclick="sendFile()" disabled>
+                            <i class="bi bi-upload"></i> Dosya Gönder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Receiver Interface -->
+                <div id="receiverInterface" style="display: none;">
+                    <h5 class="mb-3">Dosya Alımı</h5>
+                    <div class="alert alert-info" role="alert">
+                        <i class="bi bi-info-circle-fill"></i> Dosya gönderildiğinde otomatik olarak alınacaktır.
+                    </div>
+                    
+                    <div id="encryptionInfo" class="card mb-3" style="display: none;">
+                        <div class="card-header">
+                            <h6 class="mb-0">Şifreleme Bilgisi</h6>
+                        </div>
+                        <div class="card-body">
+                            <p id="encryptionMethodInfo">Şifreleme: Bilgi bekleniyor...</p>
+                            <p id="integrityCheckInfo">Bütünlük Doğrulama: Bilgi bekleniyor...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Section (Both Sender and Receiver) -->
+                <div id="transferProgress" style="display: none;">
+                    <h5 class="mt-4 mb-3">Transfer İlerlemesi</h5>
+                    <div class="file-info" id="fileInfo">
+                        Dosya bilgisi yükleniyor...
+                    </div>
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    
+                    <div class="log-container mb-4" id="transferLogs">
+                        <div class="log-entry info">Transfer başlatılıyor...</div>
+                    </div>
+                    
+                    <div class="integrity-result" id="integrityResult">
+                        <div id="integrityMessage"></div>
+                    </div>
+                    
+                    <div class="d-grid" id="downloadBtnContainer" style="display: none;">
+                        <button class="btn btn-success" id="downloadBtn" onclick="downloadFile()">
+                            <i class="bi bi-download"></i> Dosyayı İndir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let currentSecretKey = null;
+        let currentRole = null; // 'sender' or 'receiver'
+        let wsConnection = null;
+        let selectedFile = null;
+        let receivedFileData = null;
+        let receivedFileName = null;
+        let receivedFileBlob = null;
+        let receivedChunks = [];
+        let totalChunks = 0;
+        let encryptionMetadata = null;  // Store encryption metadata for decryption
+        let stegoImageFilename = null;  // Store filename for stego image
+
+        // Show different sections of the interface
+        function showCreateRoomOptions() {
+            document.getElementById('initialOptions').style.display = 'none';
+            document.getElementById('createRoomOptions').style.display = 'block';
+        }
+
+        function showJoinRoomOptions() {
+            document.getElementById('initialOptions').style.display = 'none';
+            document.getElementById('joinRoomOptions').style.display = 'block';
+        }
+
+        function goBack() {
+            // Hide all cards except initial options
+            document.getElementById('createRoomOptions').style.display = 'none';
+            document.getElementById('joinRoomOptions').style.display = 'none';
+            document.getElementById('roomCreatedDirect').style.display = 'none';
+            document.getElementById('roomCreatedStego').style.display = 'none';
+            document.getElementById('roomCreatedImage').style.display = 'none';
+            document.getElementById('fileTransfer').style.display = 'none';
+            
+            // Show initial options
+            document.getElementById('initialOptions').style.display = 'block';
+            
+            // Reset WebSocket if needed
+            if (wsConnection) {
+                wsConnection.close();
+                wsConnection = null;
+            }
+        }
+
+        // Handle key sharing option selection
+        function selectKeyOption(option) {
+            // Update radio buttons
+            document.getElementById('directOption').checked = (option === 'direct');
+            document.getElementById('stegoOption').checked = (option === 'stego');
+            document.getElementById('imageOption').checked = (option === 'image');
+            
+            // Style selected cards
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Show/hide appropriate containers
+            document.getElementById('stegoPromptContainer').style.display = 'none';
+            document.getElementById('imageUploadContainer').style.display = 'none';
+            
+            if (option === 'direct') {
+                document.querySelector('.card.option-card[onclick="selectKeyOption(\'direct\')"]').classList.add('selected');
+            } else if (option === 'stego') {
+                document.querySelector('.card.option-card[onclick="selectKeyOption(\'stego\')"]').classList.add('selected');
+                document.getElementById('stegoPromptContainer').style.display = 'block';
+            } else if (option === 'image') {
+                document.querySelector('.card.option-card[onclick="selectKeyOption(\'image\')"]').classList.add('selected');
+                document.getElementById('imageUploadContainer').style.display = 'block';
+            }
+        }
+
+        // Create room function
+        async function createRoom() {
+            const useSteganography = document.getElementById('stegoOption').checked;
+            const useImageSteganography = document.getElementById('imageOption').checked;
+            
+            try {
+                // Show loading indicator
+                document.getElementById('generatingIndicator').classList.add('show');
+                document.getElementById('createRoomBtn').disabled = true;
+                
+                if (useImageSteganography) {
+                    // Get the selected image file
+                    const imageInput = document.getElementById('stegoImage');
+                    const imageFile = imageInput.files[0];
+                    
+                    if (!imageFile) {
+                        alert('Lütfen bir resim seçin');
+                        document.getElementById('generatingIndicator').classList.remove('show');
+                        document.getElementById('createRoomBtn').disabled = false;
+                        return;
+                    }
+                    
+                    // Check if the file is an image
+                    if (!imageFile.type.startsWith('image/')) {
+                        alert('Lütfen geçerli bir resim dosyası seçin');
+                        document.getElementById('generatingIndicator').classList.remove('show');
+                        document.getElementById('createRoomBtn').disabled = false;
+                        return;
+                    }
+                    
+                    // Create FormData to send the image
+                    const formData = new FormData();
+                    formData.append('image', imageFile);
+                    
+                    // Create image stego room
+                    const response = await fetch('/api/create-image-stego-room', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Hide loading indicator
+                    document.getElementById('generatingIndicator').classList.remove('show');
+                    document.getElementById('createRoomBtn').disabled = false;
+                    
+                    if (data.status === 'success') {
+                        currentSecretKey = data.secret_key;
+                        stegoImageFilename = data.stego_image;
+                        
+                        // Load the steganographic image preview
+                        document.getElementById('stegoImagePreview').src = `/api/download-stego-image/${stegoImageFilename}`;
+                        
+                        // Show image stego room created view
+                        document.getElementById('createRoomOptions').style.display = 'none';
+                        document.getElementById('roomCreatedImage').style.display = 'block';
+                    } else {
+                        alert('Oda oluşturulamadı: ' + data.message);
+                    }
+                } else if (useSteganography) {
+                    // Get prompt if provided
+                    const prompt = document.getElementById('stegoPrompt').value.trim();
+                    
+                    // Create steganographic room
+                    const response = await fetch('/api/create-steganographic-room', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            prompt: prompt || undefined
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Hide loading indicator
+                    document.getElementById('generatingIndicator').classList.remove('show');
+                    document.getElementById('createRoomBtn').disabled = false;
+                    
+                    if (data.status === 'success') {
+                        currentSecretKey = data.secret_key;
+                        document.getElementById('stegoMessage').value = data.invitation_text;
+                        
+                        // Show stego room created view
+                        document.getElementById('createRoomOptions').style.display = 'none';
+                        document.getElementById('roomCreatedStego').style.display = 'block';
+                    } else {
+                        alert('Oda oluşturulamadı: ' + data.message);
+                    }
+                } else {
+                    // Create direct key room
+                    const response = await fetch('/api/create-room', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Hide loading indicator
+                    document.getElementById('generatingIndicator').classList.remove('show');
+                    document.getElementById('createRoomBtn').disabled = false;
+                    
+                    if (data.status === 'success') {
+                        currentSecretKey = data.secret_key;
+                        document.getElementById('generatedKey').textContent = data.secret_key;
+                        
+                        // Show direct room created view
+                        document.getElementById('createRoomOptions').style.display = 'none';
+                        document.getElementById('roomCreatedDirect').style.display = 'block';
+                    } else {
+                        alert('Oda oluşturulamadı: ' + data.message);
+                    }
+                }
+            } catch (error) {
+                console.error('Error creating room:', error);
+                document.getElementById('generatingIndicator').classList.remove('show');
+                document.getElementById('createRoomBtn').disabled = false;
+                alert('Oda oluşturulurken bir hata oluştu.');
+            }
+        }
+
+        // Join room with secret key
+        async function joinRoomWithKey() {
+            const secretKey = document.getElementById('secretKey').value.trim();
+            
+            if (!secretKey) {
+                alert('Lütfen bir Secret Key girin');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/check-room?secret_key=${encodeURIComponent(secretKey)}`);
+                const data = await response.json();
+                
+                if (data.valid) {
+                    currentSecretKey = secretKey;
+                    setupAsReceiver();
+                } else {
+                    alert('Geçersiz Secret Key veya oda bulunamadı.');
+                }
+            } catch (error) {
+                console.error('Error joining room:', error);
+                alert('Odaya katılırken bir hata oluştu.');
+            }
+        }
+
+        // Extract key from encrypted message and join
+        async function extractKeyAndJoin() {
+            const encryptedText = document.getElementById('encryptedMessage').value.trim();
+            
+            if (!encryptedText) {
+                alert('Lütfen şifreli bir mesaj girin');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/extract-secret-key', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        invitation_text: encryptedText
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    currentSecretKey = data.secret_key;
+                    setupAsReceiver();
+                } else {
+                    alert('Mesajdan secret key çıkarılamadı: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error extracting key:', error);
+                alert('Secret key çıkarılırken bir hata oluştu.');
+            }
+        }
+
+        // Extract key from image and join
+        async function extractKeyFromImageAndJoin() {
+            const imageInput = document.getElementById('stegoImageUpload');
+            
+            if (!imageInput.files || imageInput.files.length === 0) {
+                alert('Lütfen bir resim seçin');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('image', imageInput.files[0]);
+                
+                // Show loading
+                document.getElementById('image-tab').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> İşleniyor...';
+                
+                const response = await fetch('/api/extract-key-from-image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // Reset loading
+                document.getElementById('image-tab').textContent = 'Resim Yükle';
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    currentSecretKey = data.secret_key;
+                    setupAsReceiver();
+                } else {
+                    alert('Resimden secret key çıkarılamadı: ' + data.message);
+                }
+            } catch (error) {
+                // Reset loading
+                document.getElementById('image-tab').textContent = 'Resim Yükle';
+                console.error('Error extracting key from image:', error);
+                alert('Resimden secret key çıkarılırken bir hata oluştu.');
+            }
+        }
+
+        // Continue as sender after creating a room
+        function continueAsSender() {
+            setupAsSender();
+        }
+
+        // Download steganographic image
+        function downloadStegoImage() {
+            if (stegoImageFilename) {
+                window.open(`/api/download-stego-image/${stegoImageFilename}`, '_blank');
+            }
+        }
+
+        // Setup as sender
+        function setupAsSender() {
+            currentRole = 'sender';
+            
+            // Hide room creation views
+            document.getElementById('roomCreatedDirect').style.display = 'none';
+            document.getElementById('roomCreatedStego').style.display = 'none';
+            document.getElementById('roomCreatedImage').style.display = 'none';
+            
+            // Show file transfer interface with sender options
+            document.getElementById('fileTransfer').style.display = 'block';
+            document.getElementById('senderInterface').style.display = 'block';
+            document.getElementById('receiverInterface').style.display = 'none';
+            
+            // Connect WebSocket
+            connectWebSocket('sender');
+        }
+
+        // Setup as receiver
+        function setupAsReceiver() {
+            currentRole = 'receiver';
+            
+            // Hide join room view
+            document.getElementById('joinRoomOptions').style.display = 'none';
+            
+            // Show file transfer interface with receiver options
+            document.getElementById('fileTransfer').style.display = 'block';
+            document.getElementById('senderInterface').style.display = 'none';
+            document.getElementById('receiverInterface').style.display = 'block';
+            
+            // Connect WebSocket
+            connectWebSocket('receiver');
+        }
+
+        // Connect to WebSocket
+        function connectWebSocket(role) {
+            if (wsConnection) {
+                wsConnection.close();
+            }
+            
+            const connectionStatus = document.getElementById('connectionStatus');
+            connectionStatus.textContent = 'Bağlanıyor...';
+            
+            // Create WebSocket connection
+            wsConnection = new WebSocket(`ws://${window.location.host}/ws/${role}/${currentSecretKey}`);
+            
+            wsConnection.onopen = () => {
+                connectionStatus.textContent = 'Bağlandı';
+                addLogEntry('Sunucuya bağlantı kuruldu', 'info');
+                
+                if (role === 'sender') {
+                    checkFileInputState();
+                }
+            };
+            
+            wsConnection.onclose = () => {
+                connectionStatus.textContent = 'Bağlantı koptu';
+                addLogEntry('Sunucu bağlantısı kesildi', 'error');
+                
+                if (role === 'sender') {
+                    document.getElementById('sendFileBtn').disabled = true;
+                }
+            };
+            
+            wsConnection.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                connectionStatus.textContent = 'Bağlantı hatası';
+                addLogEntry('Bağlantı hatası oluştu', 'error');
+            };
+            
+            wsConnection.onmessage = handleWebSocketMessage;
+        }
+
+        // Handle WebSocket messages
+        function handleWebSocketMessage(event) {
+            try {
+                if (typeof event.data === 'string') {
+                    const data = JSON.parse(event.data);
+                    
+                    switch (data.type) {
+                        case 'status':
+                            updateRoomStatus(data);
+                            break;
+                        case 'transfer_start':
+                            handleTransferStart(data);
+                            break;
+                        case 'transfer_progress':
+                            updateTransferProgress(data);
+                            break;
+                        case 'transfer_complete':
+                            handleTransferComplete(data);
+                            break;
+                        case 'error':
+                            addLogEntry(`Hata: ${data.message}`, 'error');
+                            break;
+                    }
+                } else if (currentRole === 'receiver') {
+                    // Binary data - we now get a complete file at once, not chunks
+                    receivedFileBlob = new Blob([event.data]);
+                    addLogEntry('Dosya alındı, işleniyor...', 'info');
+                }
+            } catch (error) {
+                console.error('Error processing WebSocket message:', error);
+            }
+        }
+
+        // Update room status based on WebSocket message
+        function updateRoomStatus(data) {
+            document.getElementById('senderCount').textContent = data.senders;
+            document.getElementById('receiverCount').textContent = data.receivers;
+            
+            if (currentRole === 'sender') {
+                document.getElementById('sendFileBtn').disabled = !data.ready_to_transfer;
+                
+                if (data.ready_to_transfer) {
+                    addLogEntry('Alıcı hazır, dosya gönderebilirsiniz', 'info');
+                } else if (data.receivers === 0) {
+                    addLogEntry('Alıcı bağlantısı bekleniyor', 'info');
+                }
+            }
+        }
+
+        // Handle the start of a file transfer
+        function handleTransferStart(data) {
+            document.getElementById('transferProgress').style.display = 'block';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressBar').textContent = '0%';
+            
+            if (currentRole === 'receiver') {
+                // Reset variables
+                receivedFileBlob = null;
+                encryptionMetadata = null;
+                receivedFileName = data.filename;
+                
+                document.getElementById('fileInfo').textContent = 
+                    `Alınacak dosya: ${data.filename} (${formatFileSize(data.filesize)})`;
+                
+                addLogEntry(`Dosya transferi başlatıldı: ${data.filename}`, 'info');
+                
+                // Show encryption information if available
+                if (data.encryptionOptions) {
+                    document.getElementById('encryptionInfo').style.display = 'block';
+                    
+                    let methodText = 'Şifreleme: ';
+                    if (data.encryptionOptions.method === 'aes-256-gcm') {
+                        methodText += 'AES-256-GCM';
+                        addLogEntry('Dosya AES-256-GCM ile şifrelenmiş', 'info');
+                    } else {
+                        methodText += 'Şifrelemesiz';
+                        addLogEntry('Dosya şifrelenmeden gönderiliyor', 'info');
+                    }
+                    document.getElementById('encryptionMethodInfo').textContent = methodText;
+                    
+                    let integrityText = 'Bütünlük Doğrulama: ';
+                    if (data.encryptionOptions.integrityCheck) {
+                        integrityText += 'Aktif (SHA-256)';
+                        addLogEntry('SHA-256 bütünlük doğrulaması aktif', 'info');
+                    } else {
+                        integrityText += 'Pasif';
+                        addLogEntry('Bütünlük doğrulaması yapılmayacak', 'warning');
+                    }
+                    document.getElementById('integrityCheckInfo').textContent = integrityText;
+                }
+            } else {
+                document.getElementById('fileInfo').textContent = 
+                    `Gönderilen dosya: ${data.filename} (${formatFileSize(data.filesize)})`;
+                
+                addLogEntry(`Dosya transferi başlatıldı: ${data.filename}`, 'info');
+            }
+        }
+
+        // Update transfer progress
+        function updateTransferProgress(data) {
+            const percentage = data.percentage;
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+            document.getElementById('progressBar').textContent = `${percentage}%`;
+            
+            // Store encryption metadata for decryption
+            if (currentRole === 'receiver' && data.encryption_metadata) {
+                encryptionMetadata = data.encryption_metadata;
+                
+                if (data.encryption_metadata.aes_key) {
+                    addLogEntry('Şifreleme anahtarları alındı', 'info');
+                }
+                
+                if (data.encryption_metadata.file_hash) {
+                    addLogEntry('Dosya hash değeri alındı', 'info');
+                }
+            }
+        }
+
+        // Handle completed transfer
+        function handleTransferComplete(data) {
+            addLogEntry('Dosya transferi tamamlandı', 'success');
+            
+            if (currentRole === 'receiver') {
+                receivedFileName = data.filename;
+                
+                // Process the received file if it's encrypted
+                if (encryptionMetadata && encryptionMetadata.aes_key) {
+                    processEncryptedFile();
+                } else {
+                    // If not encrypted, show the download button
+                    document.getElementById('downloadBtnContainer').style.display = 'block';
+                }
+                
+                // Show integrity verification result if available
+                if (data.integrity_verified !== undefined) {
+                    const resultElement = document.getElementById('integrityResult');
+                    const messageElement = document.getElementById('integrityMessage');
+                    
+                    resultElement.style.display = 'block';
+                    
+                    if (data.integrity_verified) {
+                        resultElement.className = 'integrity-result integrity-success';
+                        messageElement.innerHTML = '<i class="bi bi-check-circle-fill"></i> Dosya bütünlüğü doğrulandı, indirebilirsiniz.';
+                        addLogEntry('Bütünlük doğrulaması başarılı', 'success');
+                    } else {
+                        resultElement.className = 'integrity-result integrity-error';
+                        messageElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> UYARI: Dosya bütünlüğü doğrulanamadı! Dosya değişmiş olabilir.';
+                        addLogEntry('Bütünlük doğrulaması BAŞARISIZ!', 'error');
+                    }
+                }
+            }
+        }
+
+        // Process encrypted file (decryption)
+        async function processEncryptedFile() {
+            if (!receivedFileBlob || !encryptionMetadata) {
+                addLogEntry('Şifrelenmiş dosya işlenemiyor: Eksik veri', 'error');
+                return;
+            }
+            
+            try {
+                addLogEntry('Şifrelenmiş dosya çözülüyor...', 'info');
+                
+                // Read file as ArrayBuffer
+                const fileData = await receivedFileBlob.arrayBuffer();
+                
+                // Get encryption parameters
+                const aesKeyHex = encryptionMetadata.aes_key;
+                const ivHex = encryptionMetadata.iv;
+                const tagHex = encryptionMetadata.tag;
+                
+                // Convert hex strings to Uint8Array
+                const aesKey = hexToUint8Array(aesKeyHex);
+                const iv = hexToUint8Array(ivHex);
+                const tag = hexToUint8Array(tagHex);
+                
+                // Decrypt the file using WebCrypto API
+                const decryptedData = await decryptFileWithAES(fileData, aesKey, iv, tag);
+                
+                // Create a blob from decrypted data
+                receivedFileBlob = new Blob([decryptedData]);
+                
+                addLogEntry('Dosya başarıyla deşifre edildi', 'success');
+                
+                // Show download button
+                document.getElementById('downloadBtnContainer').style.display = 'block';
+            } catch (error) {
+                console.error('Decryption error:', error);
+                addLogEntry('Dosya deşifre edilirken hata oluştu: ' + error.message, 'error');
+            }
+        }
+
+        // Helper function to convert hex string to Uint8Array
+        function hexToUint8Array(hexString) {
+            const bytes = new Uint8Array(hexString.length / 2);
+            for (let i = 0; i < hexString.length; i += 2) {
+                bytes[i / 2] = parseInt(hexString.substr(i, 2), 16);
+            }
+            return bytes;
+        }
+
+        // Decrypt file with AES-GCM using WebCrypto API
+        async function decryptFileWithAES(encryptedData, aesKey, iv, tag) {
+            try {
+                // Import the AES key
+                const key = await window.crypto.subtle.importKey(
+                    "raw",
+                    aesKey,
+                    { name: "AES-GCM" },
+                    false,
+                    ["decrypt"]
+                );
+                
+                // In AES-GCM, the tag is usually appended to the end of the ciphertext
+                // Create a new ArrayBuffer that combines the encryptedData and tag
+                const combinedLength = encryptedData.byteLength + tag.byteLength;
+                const combinedData = new Uint8Array(combinedLength);
+                
+                // Copy encrypted data first
+                combinedData.set(new Uint8Array(encryptedData), 0);
+                // Append the tag
+                combinedData.set(tag, encryptedData.byteLength);
+                
+                // Decrypt the data
+                const algorithm = {
+                    name: "AES-GCM",
+                    iv: iv,
+                    tagLength: 128 // 16 bytes (128 bits)
+                };
+                
+                try {
+                    const decrypted = await window.crypto.subtle.decrypt(
+                        algorithm,
+                        key,
+                        combinedData
+                    );
+                    return decrypted;
+                } catch (innerError) {
+                    console.error("First approach failed, trying alternate approach:", innerError);
+                    
+                    // Alternate approach - some implementations expect the tag separate from data
+                    // Try with just the encrypted data without the tag
+                    return await window.crypto.subtle.decrypt(
+                        algorithm,
+                        key,
+                        encryptedData
+                    );
+                }
+            } catch (error) {
+                console.error("Decryption error:", error);
+                throw new Error("Dosya deşifre edilemedi: " + error.message);
+            }
+        }
+
+        // Format file size for display
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' bytes';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+            else return (bytes / 1073741824).toFixed(1) + ' GB';
+        }
+
+        // Handle file input changes
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            selectedFile = e.target.files[0];
+            checkFileInputState();
+        });
+
+        // Check if send button should be enabled
+        function checkFileInputState() {
+            const sendBtn = document.getElementById('sendFileBtn');
+            
+            if (selectedFile && wsConnection && wsConnection.readyState === WebSocket.OPEN) {
+                const receiverCount = parseInt(document.getElementById('receiverCount').textContent);
+                
+                if (receiverCount > 0) {
+                    sendBtn.disabled = false;
+                    return;
+                }
+            }
+            
+            sendBtn.disabled = true;
+        }
+
+        // Send file through WebSocket
+        function sendFile() {
+            if (!selectedFile || !wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+                alert('Dosya seçilmedi veya bağlantı kurulmadı');
+                return;
+            }
+
+            // Get encryption options
+            const encryptionOptions = {
+                method: document.getElementById('encryptionMethod').value,
+                integrityCheck: document.getElementById('integrityCheck').checked
+            };
+
+            // Show progress UI
+            document.getElementById('transferProgress').style.display = 'block';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressBar').textContent = '0%';
+            
+            addLogEntry('Dosya transferi başlatılıyor...', 'info');
+            
+            // Log encryption options
+            if (encryptionOptions.method === 'aes-256-gcm') {
+                addLogEntry('Dosya AES-256-GCM ile şifrelenecek', 'info');
+            } else {
+                addLogEntry('Dosya şifrelemesiz gönderilecek', 'info');
+            }
+            
+            if (encryptionOptions.integrityCheck) {
+                addLogEntry('SHA-256 bütünlük doğrulaması aktif', 'info');
+            }
+
+            // Send file metadata
+            wsConnection.send(JSON.stringify({
+                type: 'start_transfer',
+                filename: selectedFile.name,
+                filesize: selectedFile.size,
+                encryptionOptions: encryptionOptions
+            }));
+
+            // Start reading and sending file chunks
+            const chunkSize = 64 * 1024; // 64KB chunks
+            const totalChunks = Math.ceil(selectedFile.size / chunkSize);
+            let chunkId = 0;
+
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                if (wsConnection.readyState === WebSocket.OPEN) {
+                    // Send binary chunk
+                    wsConnection.send(e.target.result);
+                    
+                    // Send chunk metadata
+                    wsConnection.send(JSON.stringify({
+                        chunk_id: chunkId,
+                        total_chunks: totalChunks
+                    }));
+                    
+                    if (chunkId === 0) {
+                        addLogEntry('İlk dosya parçası gönderildi', 'info');
+                    } else if (chunkId === totalChunks - 1) {
+                        addLogEntry('Son dosya parçası gönderildi', 'info');
+                    }
+                    
+                    chunkId++;
+                    
+                    if (chunkId < totalChunks) {
+                        // Read next chunk
+                        const start = chunkId * chunkSize;
+                        const end = Math.min(start + chunkSize, selectedFile.size);
+                        readNextChunk(start, end);
+                    }
+                }
+            };
+            
+            const readNextChunk = (start, end) => {
+                const slice = selectedFile.slice(start, end);
+                reader.readAsArrayBuffer(slice);
+            };
+            
+            // Start reading first chunk
+            readNextChunk(0, chunkSize);
+        }
+
+        // Download received file
+        function downloadFile() {
+            if (!receivedFileBlob || !receivedFileName) {
+                addLogEntry('İndirilecek dosya bulunamadı', 'error');
+                return;
+            }
+
+            const url = URL.createObjectURL(receivedFileBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = receivedFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            addLogEntry(`Dosya "${receivedFileName}" olarak indirildi`, 'success');
+        }
+
+        // Leave room function
+        function leaveRoom() {
+            if (wsConnection) {
+                wsConnection.close();
+                wsConnection = null;
+            }
+            
+            // Reset variables
+            currentSecretKey = null;
+            currentRole = null;
+            selectedFile = null;
+            receivedFileBlob = null;
+            receivedFileName = null;
+            receivedChunks = [];
+            
+            // Reset UI elements
+            document.getElementById('transferLogs').innerHTML = '';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressBar').textContent = '0%';
+            document.getElementById('transferProgress').style.display = 'none';
+            document.getElementById('integrityResult').style.display = 'none';
+            document.getElementById('downloadBtnContainer').style.display = 'none';
+            document.getElementById('encryptionInfo').style.display = 'none';
+            
+            // Go back to initial view
+            goBack();
+        }
+
+        // Add log entry
+        function addLogEntry(message, type = 'info') {
+            const logContainer = document.getElementById('transferLogs');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            // Add timestamp
+            const now = new Date();
+            const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            
+            entry.textContent = `[${timestamp}] ${message}`;
+            logContainer.appendChild(entry);
+            
+            // Scroll to bottom
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        // Copy content to clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            
+            if (element.tagName === 'TEXTAREA') {
+                navigator.clipboard.writeText(element.value)
+                    .then(() => {
+                        alert('Metin panoya kopyalandı!');
+                    })
+                    .catch(err => {
+                        console.error('Kopyalama hatası:', err);
+                        alert('Kopyalama başarısız oldu.');
+                    });
+            } else {
+                navigator.clipboard.writeText(element.textContent)
+                    .then(() => {
+                        alert('Metin panoya kopyalandı!');
+                    })
+                    .catch(err => {
+                        console.error('Kopyalama hatası:', err);
+                        alert('Kopyalama başarısız oldu.');
+                    });
+            }
+        }
+    </script>
+</body>
+</html>
