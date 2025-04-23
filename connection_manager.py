@@ -1,6 +1,6 @@
 import json
 from fastapi import WebSocket
-from typing import Dict, Set, Optional, List
+from typing import Dict, Set, Optional, List, Any
 from starlette.websockets import WebSocketState
 import logging
 import asyncio
@@ -27,8 +27,36 @@ class ConnectionManager:
         self.file_chunks: Dict[str, Dict[int, bytes]] = {}
         # Store encryption info
         self.encryption_info: Dict[str, Dict] = {}
+        # Store room settings
+        self.room_settings: Dict[str, Dict] = {}
         
     async def connect(self, websocket: WebSocket, secret_key: str, role: str):
+        # Check if room exists
+        if secret_key not in self.active_connections and secret_key not in self.room_settings:
+            await websocket.accept()
+            await websocket.send_json({
+                "type": "error",
+                "message": "Room does not exist"
+            })
+            await websocket.close()
+            return False
+        
+        # Check if room is at capacity for receivers
+        if role == "receiver" and secret_key in self.room_settings:
+            max_receivers = self.room_settings[secret_key].get("max_receivers", 0)
+            current_receivers = sum(1 for ws in self.active_connections.get(secret_key, set()) 
+                                   if self.connection_info.get(ws, {}).get("role") == "receiver")
+            
+            if max_receivers > 0 and current_receivers >= max_receivers:
+                # Room is full, reject connection
+                await websocket.accept()
+                await websocket.send_json({
+                    "type": "error",
+                    "message": "Room has reached maximum capacity"
+                })
+                await websocket.close()
+                return False
+        
         await websocket.accept()
         
         if secret_key not in self.active_connections:
@@ -41,6 +69,7 @@ class ConnectionManager:
         
         # Notify about connection status
         await self.send_room_status(secret_key)
+        return True
     
     async def disconnect(self, websocket: WebSocket):
         if websocket in self.connection_info:
@@ -56,6 +85,7 @@ class ConnectionManager:
                     self.active_transfers.pop(secret_key, None)
                     self.file_chunks.pop(secret_key, None)
                     self.encryption_info.pop(secret_key, None)
+                    self.room_settings.pop(secret_key, None)
                 else:
                     # Notify remaining participants
                     await self.send_room_status(secret_key)
@@ -73,14 +103,35 @@ class ConnectionManager:
         senders = sum(1 for ws in connections if self.connection_info.get(ws, {}).get("role") == "sender")
         receivers = sum(1 for ws in connections if self.connection_info.get(ws, {}).get("role") == "receiver")
         
+        # Get max receivers setting
+        max_receivers = 0
+        if secret_key in self.room_settings:
+            max_receivers = self.room_settings[secret_key].get("max_receivers", 0)
+            
         status_message = {
             "type": "status",
             "senders": senders,
             "receivers": receivers,
+            "max_receivers": max_receivers,
             "ready_to_transfer": senders > 0 and receivers > 0
         }
         
         await self.broadcast(connections, status_message)
+
+    def register_room_settings(self, secret_key: str, settings: Dict[str, Any]) -> None:
+        """
+        Register settings for a room.
+        
+        Args:
+            secret_key: The room's secret key
+            settings: Dictionary of room settings (max_receivers, etc.)
+        """
+        if secret_key not in self.room_settings:
+            self.room_settings[secret_key] = {}
+            
+        # Update with new settings
+        self.room_settings[secret_key].update(settings)
+        logger.info(f"Room settings updated for {secret_key[:5]}... - max_receivers: {settings.get('max_receivers', 0)}")
 
     async def start_file_transfer(self, websocket: WebSocket, filename: str, filesize: int, encryption_options=None):
         if websocket not in self.connection_info:

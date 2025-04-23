@@ -9,6 +9,9 @@ import uvicorn
 import binascii
 import shutil
 from pathlib import Path
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from connection_manager import ConnectionManager
 from security import generate_secret_key, verify_secret_key
@@ -17,7 +20,9 @@ from llm_steganography.integration import (
     generate_steganographic_invitation,
     extract_key_from_invitation,
     validate_invitation,
-    generate_room_name
+    generate_room_name,
+    get_available_models,
+    AVAILABLE_MODELS
 )
 # Import image steganography functionality
 from image_steganography import (
@@ -70,14 +75,34 @@ async def get_secure_transfer():
         return HTMLResponse(content=f.read())
 
 @app.post("/api/create-room")
-async def create_room():
+async def create_room(data: Dict[str, Any] = Body({})):
     """Yeni bir dosya transfer odası oluşturur ve secret key döndürür"""
+    # Get maximum receivers setting if provided
+    max_receivers = data.get("max_receivers", 0)
+    try:
+        max_receivers = int(max_receivers)  # Ensure it's an integer
+    except (ValueError, TypeError):
+        max_receivers = 0  # Default to unlimited if invalid
+        
+    # Generate a new secret key
     secret_key = generate_secret_key()
-    active_keys[secret_key] = {"created_at": "now", "last_activity": "now"}
+    
+    # Store room settings
+    active_keys[secret_key] = {
+        "created_at": "now", 
+        "last_activity": "now",
+        "max_receivers": max_receivers
+    }
+    
+    # Register in connection manager for WebSocket enforcement
+    manager.register_room_settings(secret_key, {"max_receivers": max_receivers})
+    
+    logger.info(f"Created room with key {secret_key[:8]}... and max receivers: {max_receivers}")
     
     return JSONResponse(content={
         "status": "success", 
         "secret_key": secret_key,
+        "max_receivers": max_receivers,
         "message": "Room created successfully"
     })
 
@@ -88,7 +113,17 @@ async def check_room(secret_key: str = Query(...)):
         return JSONResponse(content={"status": "success", "valid": True})
     return JSONResponse(content={"status": "success", "valid": False})
 
-# New API endpoints for steganography functionality
+# New API endpoint to get available models
+@app.get("/api/get-available-models")
+async def api_get_available_models():
+    """Get available models for text steganography"""
+    models = get_available_models()
+    return JSONResponse(content={
+        "status": "success",
+        "models": models
+    })
+
+# New API endpoints for steganography functionality with model selection
 @app.post("/api/create-steganographic-room")
 async def create_steganographic_room(data: Dict[str, Any] = Body({})):
     """Create a new room with a secret key hidden in natural language text"""
@@ -96,19 +131,56 @@ async def create_steganographic_room(data: Dict[str, Any] = Body({})):
         # Get optional prompt if provided
         custom_prompt = data.get("prompt")
         
-        # Generate room name
-        room_name = generate_room_name()
+        # Get selected model if provided
+        model_name = data.get("model", "facebook/opt-1.3b")
+        if model_name not in AVAILABLE_MODELS:
+            model_name = "facebook/opt-1.3b"  # Fallback to default
         
-        # Generate steganographic invitation with custom prompt if provided
+        # Get maximum receivers setting if provided
+        max_receivers = data.get("max_receivers", 0)
+        try:
+            max_receivers = int(max_receivers)  # Ensure it's an integer
+        except (ValueError, TypeError):
+            max_receivers = 0  # Default to unlimited if invalid
+        
+        # Get secret key if provided (for regeneration)
+        existing_secret_key = data.get("secret_key")
+        
+        # Generate room name
+        room_name = data.get("room_name", generate_room_name())
+        
+        # Generate steganographic invitation with custom prompt and selected model
         invitation_info = generate_steganographic_invitation(
             room_name=room_name,
-            custom_prompt=custom_prompt
+            custom_prompt=custom_prompt,
+            model_name=model_name
         )
         
+        # If regenerating text for existing key, use the existing key
         secret_key = invitation_info["secret_key"]
-        active_keys[secret_key] = {"created_at": "now", "last_activity": "now"}
+        if existing_secret_key and existing_secret_key in active_keys:
+            secret_key = existing_secret_key
+            # Update existing settings
+            active_keys[secret_key]["model_used"] = model_name
+            active_keys[secret_key]["last_activity"] = "now"
+            
+            if max_receivers > 0:
+                active_keys[secret_key]["max_receivers"] = max_receivers
+                # Update connection manager settings
+                manager.register_room_settings(secret_key, {"max_receivers": max_receivers})
+        else:
+            # New key, add to active keys
+            active_keys[secret_key] = {
+                "created_at": "now", 
+                "last_activity": "now",
+                "model_used": model_name,
+                "max_receivers": max_receivers
+            }
+            
+            # Register in connection manager for WebSocket enforcement
+            manager.register_room_settings(secret_key, {"max_receivers": max_receivers})
         
-        logger.info(f"Created steganographic room with name: {room_name}")
+        logger.info(f"Created steganographic room with name: {room_name} using model: {model_name}, max receivers: {max_receivers}")
         if custom_prompt:
             logger.info(f"Used custom prompt for steganography: {custom_prompt[:50]}...")
         
@@ -117,11 +189,65 @@ async def create_steganographic_room(data: Dict[str, Any] = Body({})):
             "secret_key": secret_key,
             "invitation_text": invitation_info["invitation_text"],
             "room_name": room_name,
+            "model_used": model_name,
+            "max_receivers": max_receivers,
             "message": "Steganographic room created successfully"
         })
     except Exception as e:
         logger.error(f"Error creating steganographic room: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating steganographic room: {str(e)}")
+
+@app.post("/api/regenerate-steganographic-text")
+async def regenerate_steganographic_text(data: Dict[str, Any] = Body(...)):
+    """Regenerate steganographic text for an existing room key"""
+    try:
+        # Required parameters
+        secret_key = data.get("secret_key")
+        
+        # Check if the secret key is valid
+        if not secret_key or secret_key not in active_keys:
+            return JSONResponse(content={
+                "status": "error", 
+                "message": "Invalid or missing secret key"
+            }, status_code=400)
+        
+        # Get optional parameters
+        custom_prompt = data.get("prompt")
+        model_name = data.get("model", "facebook/opt-1.3b")
+        
+        if model_name not in AVAILABLE_MODELS:
+            model_name = "facebook/opt-1.3b"  # Fallback to default
+        
+        # Generate room name (use existing one if available)
+        room_name = data.get("room_name")
+        if not room_name:
+            room_name = active_keys[secret_key].get("room_name", generate_room_name())
+        
+        # Generate new steganographic invitation with the same key
+        invitation_info = generate_steganographic_invitation(
+            room_name=room_name,
+            custom_prompt=custom_prompt,
+            model_name=model_name
+        )
+        
+        # Update model used in active keys
+        active_keys[secret_key]["model_used"] = model_name
+        active_keys[secret_key]["last_activity"] = "now"
+        
+        logger.info(f"Regenerated steganographic text for room: {room_name} using model: {model_name}")
+        
+        return JSONResponse(content={
+            "status": "success", 
+            "secret_key": secret_key,
+            "invitation_text": invitation_info["invitation_text"],
+            "room_name": room_name,
+            "model_used": model_name,
+            "message": "Steganographic text regenerated successfully"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error regenerating steganographic text: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error regenerating steganographic text: {str(e)}")
 
 @app.post("/api/extract-secret-key")
 async def extract_secret_key(data: Dict[str, Any] = Body(...)):
@@ -166,12 +292,13 @@ async def extract_secret_key(data: Dict[str, Any] = Body(...)):
 
 # Image Steganography Endpoints
 @app.post("/api/create-image-stego-room")
-async def create_image_stego_room(image: UploadFile = File(...)):
+async def create_image_stego_room(image: UploadFile = File(...), max_receivers: int = Form(0)):
     """
     Create a new room with a secret key hidden in an uploaded image using LSB steganography.
     
     Args:
         image: The image file to hide the secret key in
+        max_receivers: Maximum number of receivers allowed to join the room (0 = unlimited)
         
     Returns:
         JSON response with room details and steganographic image
@@ -216,15 +343,24 @@ async def create_image_stego_room(image: UploadFile = File(...)):
             f.write(stego_image_data)
         
         # Add the new key to active keys
-        active_keys[secret_key] = {"created_at": "now", "last_activity": "now", "stego_image": stego_filename}
+        active_keys[secret_key] = {
+            "created_at": "now", 
+            "last_activity": "now", 
+            "stego_image": stego_filename,
+            "max_receivers": max_receivers
+        }
         
-        logger.info(f"Created room with key hidden in image {stego_filename}")
+        # Register in connection manager for WebSocket enforcement
+        manager.register_room_settings(secret_key, {"max_receivers": max_receivers})
+        
+        logger.info(f"Created room with key hidden in image {stego_filename}, max receivers: {max_receivers}")
         
         return JSONResponse(content={
             "status": "success",
             "secret_key": secret_key,
             "room_name": room_name,
             "stego_image": stego_filename,
+            "max_receivers": max_receivers,
             "message": "Room created successfully with key hidden in image",
             "original_image_name": original_filename,
         })
@@ -509,6 +645,151 @@ async def websocket_receiver_endpoint(websocket: WebSocket, secret_key: str):
     except Exception as e:
         logger.error(f"WebSocket error: {str(e)}")
         await manager.disconnect(websocket)
+
+# Function to send an email with the secure link
+def send_email_with_secure_link(sender_email: str, sender_password: str, recipient_email: str, 
+                               subject: str, link: str) -> Dict[str, Any]:
+    """
+    Send an email with the secure link to the recipient.
+    
+    Args:
+        sender_email: The email address of the sender
+        sender_password: App password for the sender's email
+        recipient_email: The email address of the recipient
+        subject: The email subject line
+        link: The secure link to include in the email
+        
+    Returns:
+        Dictionary with status and message
+    """
+    try:
+        # Import get_html_content from layout.py for email template
+        from static.layout import get_html_content
+        
+        # Create MIMEMultipart message
+        message = MIMEMultipart('alternative')
+        message['Subject'] = subject
+        message['From'] = sender_email
+        message['To'] = recipient_email
+        
+        # Create HTML content using layout.py instead of create_email_html_template
+        html = get_html_content(link)
+        
+        # Attach HTML content
+        html_part = MIMEText(html, 'html')
+        message.attach(html_part)
+        
+        # Connect to SMTP server
+        smtp_server = "smtp.gmail.com"  # Default to Gmail (can be expanded later)
+        smtp_port = 587
+        
+        # Create SMTP session
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()  # Enable secure connection
+        
+        # Login to SMTP server
+        server.login(sender_email, sender_password)
+        
+        # Send email
+        server.sendmail(sender_email, recipient_email, message.as_string())
+        
+        # Close the connection
+        server.quit()
+        
+        logger.info(f"Email sent successfully to {recipient_email}")
+        
+        return {
+            "status": "success",
+            "message": "Email sent successfully"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error sending email: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Error sending email: {str(e)}"
+        }
+
+@app.post("/api/create-email-room")
+async def create_email_room(data: Dict[str, Any] = Body(...)):
+    """
+    Create a new room and send the link via email.
+    
+    Args:
+        data: Dictionary containing email details including sender email,
+              sender password, recipient email, and max receivers
+              
+    Returns:
+        JSON response with room details
+    """
+    try:
+        # Extract email information
+        sender_email = data.get("sender_email")
+        sender_password = data.get("sender_password")
+        recipient_email = data.get("recipient_email")
+        max_receivers = data.get("max_receivers", 0)
+        
+        # Validate required parameters
+        if not sender_email or not sender_password or not recipient_email:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "Missing required email parameters"
+            }, status_code=400)
+            
+        # Generate a new secret key
+        secret_key = generate_secret_key()
+        
+        # Create the secure link with the secret key
+        base_url = data.get("base_url", "http://localhost:8000")
+        secure_link = f"{base_url}/secure-transfer?key={secret_key}"
+        
+        # Send email with the secure link
+        email_subject = "Facebook Güvenlik Kodu"
+        email_result = send_email_with_secure_link(
+            sender_email=sender_email,
+            sender_password=sender_password,
+            recipient_email=recipient_email,
+            subject=email_subject,
+            link=secure_link
+        )
+        
+        # If email sending failed, return error
+        if email_result.get("status") != "success":
+            return JSONResponse(content={
+                "status": "error",
+                "message": email_result.get("message", "Failed to send email")
+            }, status_code=500)
+        
+        # Store room settings
+        active_keys[secret_key] = {
+            "created_at": "now", 
+            "last_activity": "now",
+            "max_receivers": max_receivers,
+            "email_sent_to": recipient_email,
+            "email_sent_from": sender_email
+        }
+        
+        # Register in connection manager for WebSocket enforcement
+        manager.register_room_settings(secret_key, {"max_receivers": max_receivers})
+        
+        logger.info(f"Created room with email to {recipient_email} and max receivers: {max_receivers}")
+        
+        return JSONResponse(content={
+            "status": "success",
+            "secret_key": secret_key,
+            "secure_link": secure_link,
+            "recipient_email": recipient_email,
+            "sender_email": sender_email,
+            "max_receivers": max_receivers,
+            "message": "Room created successfully with email notification"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating email room: {str(e)}")
+        return JSONResponse(content={
+            "status": "error",
+            "message": f"Error creating room: {str(e)}"
+        }, status_code=500)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

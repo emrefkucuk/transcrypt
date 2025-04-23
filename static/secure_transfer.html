@@ -202,7 +202,7 @@
                 <p>Secret key nasıl paylaşılsın?</p>
                 
                 <div class="row mb-4">
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <div class="card option-card" onclick="selectKeyOption('direct')">
                             <div class="card-body p-3">
                                 <div class="form-check">
@@ -218,7 +218,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <div class="card option-card" onclick="selectKeyOption('stego')">
                             <div class="card-body p-3">
                                 <div class="form-check">
@@ -234,7 +234,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <div class="card option-card" onclick="selectKeyOption('image')">
                             <div class="card-body p-3">
                                 <div class="form-check">
@@ -250,13 +250,43 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card option-card" onclick="selectKeyOption('email')">
+                            <div class="card-body p-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="keyOption" id="emailOption" value="email">
+                                    <label class="form-check-label w-100" for="emailOption">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi bi-envelope-fill fs-2 text-primary me-2"></i>
+                                            <h5 class="mb-0">Email Gizleme</h5>
+                                        </div>
+                                        <p class="text-muted mb-0">Bağlantı linki email üzerinden iletilir</p>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Steganography Prompt (Hidden by Default) -->
+                <!-- Steganography Prompt with Model Selection (Hidden by Default) -->
                 <div id="stegoPromptContainer" class="mb-4" style="display: none;">
-                    <label for="stegoPrompt" class="form-label">Şifreleme için mesaj temasi (opsiyonel):</label>
-                    <textarea class="form-control" id="stegoPrompt" rows="3" placeholder="Örneğin: 'Güvenli dosya paylaşımı hakkında bir mesaj yaz'"></textarea>
-                    <div class="form-text">Bu temayla ilgili doğal bir mesaj oluşturulacak ve içine secret key gizlenecektir.</div>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <label for="stegoPrompt" class="form-label">Şifreleme için mesaj teması (opsiyonel):</label>
+                            <textarea class="form-control" id="stegoPrompt" rows="3" placeholder="Örneğin: 'Güvenli dosya paylaşımı hakkında bir mesaj yaz'"></textarea>
+                            <div class="form-text">Bu temayla ilgili doğal bir mesaj oluşturulacak ve içine secret key gizlenecektir.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="modelSelect" class="form-label">AI Modeli:</label>
+                            <select class="form-select" id="modelSelect">
+                                <option value="facebook/opt-1.3b">Meta OPT (1.3B)</option>
+                                <option value="EleutherAI/pythia-1b">Pythia (1B)</option>
+                                <option value="microsoft/phi-1_5">Microsoft Phi-1.5</option>
+                                <option value="gpt2">OpenAI GPT-2</option>
+                            </select>
+                            <div class="form-text">Kullanılacak dil modeli</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Image Upload (Hidden by Default) -->
@@ -269,11 +299,48 @@
                     </div>
                 </div>
 
+                <!-- Email Setup (Hidden by Default) -->
+                <div id="emailSetupContainer" class="mb-4" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Email Gönderim Bilgileri</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="senderEmail" class="form-label">Gönderen Email Adresi:</label>
+                                <input type="email" class="form-control" id="senderEmail" placeholder="ornek@gmail.com">
+                                <div class="form-text">Gmail hesabınız önerilir</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="appPassword" class="form-label">Uygulama Şifresi:</label>
+                                <input type="password" class="form-control" id="appPassword">
+                                <div class="form-text">
+                                    Gmail için <a href="https://myaccount.google.com/apppasswords" target="_blank">Uygulama Şifresi</a> oluşturmanız gerekiyor
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="receiverEmail" class="form-label">Alıcı Email Adresi:</label>
+                                <input type="email" class="form-control" id="receiverEmail" placeholder="alici@example.com">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="generating-indicator mb-3" id="generatingIndicator">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Yükleniyor...</span>
                     </div>
                     <span>Oda oluşturuluyor, lütfen bekleyin...</span>
+                </div>
+
+                <!-- Maximum receivers setting -->
+                <div class="mb-3">
+                    <label for="maxReceivers" class="form-label">Maksimum Alıcı Sayısı:</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="maxReceivers" min="0" value="0">
+                        <span class="input-group-text">kişi</span>
+                    </div>
+                    <div class="form-text">Odaya katılabilecek maksimum kişi sayısı (0 = sınırsız)</div>
                 </div>
 
                 <div class="d-grid">
@@ -380,6 +447,42 @@
                         <i class="bi bi-send"></i> Gönderici Olarak Devam Et
                     </button>
                 </div>
+                
+                <hr>
+                
+                <div class="mt-3">
+                    <h6>Metni Yeniden Oluştur</h6>
+                    <p class="text-muted">Metni beğenmediyseniz, aynı secret key ile yeniden oluşturabilirsiniz:</p>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label for="regeneratePrompt" class="form-label">Yeni Mesaj Teması:</label>
+                            <textarea class="form-control" id="regeneratePrompt" rows="2" placeholder="Yeniden oluşturma için farklı bir tema girebilirsiniz"></textarea>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="regenerateModel" class="form-label">AI Modeli:</label>
+                            <select class="form-select" id="regenerateModel">
+                                <option value="facebook/opt-1.3b">Meta OPT (1.3B)</option>
+                                <option value="EleutherAI/pythia-1b">Pythia (1B)</option>
+                                <option value="microsoft/phi-1_5">Microsoft Phi-1.5</option>
+                                <option value="gpt2">OpenAI GPT-2</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button class="btn btn-outline-primary" id="regenerateBtn" onclick="regenerateStegoText()">
+                            <i class="bi bi-arrow-repeat"></i> Metni Yeniden Oluştur
+                        </button>
+                    </div>
+                    
+                    <div class="generating-indicator mt-3" id="regeneratingIndicator">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Yükleniyor...</span>
+                        </div>
+                        <span>Yeni metin oluşturuluyor, lütfen bekleyin...</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -410,6 +513,42 @@
                 <div class="info-text">
                     <i class="bi bi-info-circle"></i> Bu resim görsel olarak orijinalinden farksızdır, ancak içinde odanın secret key'i gizlenmiştir.
                     Karşı taraf bu resmi yükleyerek odaya otomatik olarak katılabilir.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Room Created with Email -->
+        <div id="roomCreatedEmail" class="card" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Email ile Oda Oluşturuldu</h5>
+                <button class="btn btn-sm btn-outline-light" onclick="goBack()">
+                    <i class="bi bi-arrow-left"></i> Geri
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill me-2"></i> Bağlantı linki email ile başarıyla gönderildi!
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">Email Gönderim Detayları</h6>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Gönderen:</strong> <span id="emailSenderInfo"></span></p>
+                        <p><strong>Alıcı:</strong> <span id="emailReceiverInfo"></span></p>
+                        <p><strong>Bağlantı Linki:</strong> <span id="emailLinkInfo" class="text-primary"></span></p>
+                    </div>
+                </div>
+                
+                <div class="d-grid">
+                    <button class="btn btn-primary" onclick="continueAsSender()">
+                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                    </button>
+                </div>
+                
+                <div class="mt-3 info-text">
+                    <i class="bi bi-info-circle"></i> Alıcı, email içerisindeki bağlantı linkine tıklayarak odaya doğrudan katılabilir.
                 </div>
             </div>
         </div>
@@ -535,6 +674,39 @@
         let encryptionMetadata = null;  // Store encryption metadata for decryption
         let stegoImageFilename = null;  // Store filename for stego image
 
+        // Check if URL has key parameter on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Parse URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const keyParam = urlParams.get('key');
+            
+            // If key parameter exists, automatically join the room
+            if (keyParam) {
+                console.log('Key parameter detected:', keyParam);
+                autoJoinWithKey(keyParam);
+            }
+        });
+
+        // Function to automatically join room with key from URL
+        async function autoJoinWithKey(secretKey) {
+            if (!secretKey) return;
+            
+            try {
+                const response = await fetch(`/api/check-room?secret_key=${encodeURIComponent(secretKey)}`);
+                const data = await response.json();
+                
+                if (data.valid) {
+                    currentSecretKey = secretKey;
+                    setupAsReceiver();
+                } else {
+                    alert('Geçersiz Secret Key veya oda bulunamadı.');
+                }
+            } catch (error) {
+                console.error('Error joining room:', error);
+                alert('Odaya katılırken bir hata oluştu.');
+            }
+        }
+
         // Show different sections of the interface
         function showCreateRoomOptions() {
             document.getElementById('initialOptions').style.display = 'none';
@@ -553,6 +725,7 @@
             document.getElementById('roomCreatedDirect').style.display = 'none';
             document.getElementById('roomCreatedStego').style.display = 'none';
             document.getElementById('roomCreatedImage').style.display = 'none';
+            document.getElementById('roomCreatedEmail').style.display = 'none';
             document.getElementById('fileTransfer').style.display = 'none';
             
             // Show initial options
@@ -571,6 +744,7 @@
             document.getElementById('directOption').checked = (option === 'direct');
             document.getElementById('stegoOption').checked = (option === 'stego');
             document.getElementById('imageOption').checked = (option === 'image');
+            document.getElementById('emailOption').checked = (option === 'email');
             
             // Style selected cards
             document.querySelectorAll('.option-card').forEach(card => {
@@ -580,6 +754,7 @@
             // Show/hide appropriate containers
             document.getElementById('stegoPromptContainer').style.display = 'none';
             document.getElementById('imageUploadContainer').style.display = 'none';
+            document.getElementById('emailSetupContainer').style.display = 'none';
             
             if (option === 'direct') {
                 document.querySelector('.card.option-card[onclick="selectKeyOption(\'direct\')"]').classList.add('selected');
@@ -589,6 +764,9 @@
             } else if (option === 'image') {
                 document.querySelector('.card.option-card[onclick="selectKeyOption(\'image\')"]').classList.add('selected');
                 document.getElementById('imageUploadContainer').style.display = 'block';
+            } else if (option === 'email') {
+                document.querySelector('.card.option-card[onclick="selectKeyOption(\'email\')"]').classList.add('selected');
+                document.getElementById('emailSetupContainer').style.display = 'block';
             }
         }
 
@@ -596,6 +774,10 @@
         async function createRoom() {
             const useSteganography = document.getElementById('stegoOption').checked;
             const useImageSteganography = document.getElementById('imageOption').checked;
+            const useEmail = document.getElementById('emailOption').checked;
+            
+            // Get maximum receivers setting
+            const maxReceivers = document.getElementById('maxReceivers').value;
             
             try {
                 // Show loading indicator
@@ -625,6 +807,7 @@
                     // Create FormData to send the image
                     const formData = new FormData();
                     formData.append('image', imageFile);
+                    formData.append('max_receivers', maxReceivers);
                     
                     // Create image stego room
                     const response = await fetch('/api/create-image-stego-room', {
@@ -654,6 +837,7 @@
                 } else if (useSteganography) {
                     // Get prompt if provided
                     const prompt = document.getElementById('stegoPrompt').value.trim();
+                    const model = document.getElementById('modelSelect').value;
                     
                     // Create steganographic room
                     const response = await fetch('/api/create-steganographic-room', {
@@ -662,7 +846,9 @@
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
-                            prompt: prompt || undefined
+                            prompt: prompt || undefined,
+                            model: model,
+                            max_receivers: parseInt(maxReceivers)
                         })
                     });
                     
@@ -682,13 +868,61 @@
                     } else {
                         alert('Oda oluşturulamadı: ' + data.message);
                     }
+                } else if (useEmail) {
+                    // Get email details
+                    const senderEmail = document.getElementById('senderEmail').value.trim();
+                    const appPassword = document.getElementById('appPassword').value.trim();
+                    const receiverEmail = document.getElementById('receiverEmail').value.trim();
+                    
+                    if (!senderEmail || !appPassword || !receiverEmail) {
+                        alert('Lütfen tüm email bilgilerini doldurun');
+                        document.getElementById('generatingIndicator').classList.remove('show');
+                        document.getElementById('createRoomBtn').disabled = false;
+                        return;
+                    }
+                    
+                    // Create email room
+                    const response = await fetch('/api/create-email-room', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sender_email: senderEmail,
+                            sender_password: appPassword,
+                            recipient_email: receiverEmail,
+                            max_receivers: parseInt(maxReceivers)
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Hide loading indicator
+                    document.getElementById('generatingIndicator').classList.remove('show');
+                    document.getElementById('createRoomBtn').disabled = false;
+                    
+                    if (data.status === 'success') {
+                        currentSecretKey = data.secret_key;
+                        document.getElementById('emailSenderInfo').textContent = senderEmail;
+                        document.getElementById('emailReceiverInfo').textContent = receiverEmail;
+                        document.getElementById('emailLinkInfo').textContent = data.secure_link || data.invitation_link || '';
+                        
+                        // Show email room created view
+                        document.getElementById('createRoomOptions').style.display = 'none';
+                        document.getElementById('roomCreatedEmail').style.display = 'block';
+                    } else {
+                        alert('Oda oluşturulamadı: ' + data.message);
+                    }
                 } else {
                     // Create direct key room
                     const response = await fetch('/api/create-room', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
-                        }
+                        },
+                        body: JSON.stringify({
+                            max_receivers: parseInt(maxReceivers)
+                        })
                     });
                     
                     const data = await response.json();
@@ -835,6 +1069,7 @@
             document.getElementById('roomCreatedDirect').style.display = 'none';
             document.getElementById('roomCreatedStego').style.display = 'none';
             document.getElementById('roomCreatedImage').style.display = 'none';
+            document.getElementById('roomCreatedEmail').style.display = 'none';
             
             // Show file transfer interface with sender options
             document.getElementById('fileTransfer').style.display = 'block';
@@ -882,9 +1117,17 @@
                 }
             };
             
-            wsConnection.onclose = () => {
+            wsConnection.onclose = (event) => {
                 connectionStatus.textContent = 'Bağlantı koptu';
-                addLogEntry('Sunucu bağlantısı kesildi', 'error');
+                
+                // Check if this was an abnormal closure with a reason
+                if (event.code === 1000) {
+                    // Normal closure
+                    addLogEntry('Sunucu bağlantısı kesildi', 'info');
+                } else {
+                    // Abnormal closure
+                    addLogEntry('Sunucu bağlantısı kesildi: ' + (event.reason || 'Bilinmeyen hata'), 'error');
+                }
                 
                 if (role === 'sender') {
                     document.getElementById('sendFileBtn').disabled = true;
@@ -920,7 +1163,7 @@
                             handleTransferComplete(data);
                             break;
                         case 'error':
-                            addLogEntry(`Hata: ${data.message}`, 'error');
+                            handleErrorMessage(data);
                             break;
                     }
                 } else if (currentRole === 'receiver') {
@@ -930,6 +1173,32 @@
                 }
             } catch (error) {
                 console.error('Error processing WebSocket message:', error);
+            }
+        }
+        
+        // Handle error messages from the server
+        function handleErrorMessage(data) {
+            // Log error
+            addLogEntry(`Hata: ${data.message}`, 'error');
+            
+            // Display the error using our new error display function
+            displayErrorMessage(data.message);
+            
+            // If it's a room capacity error, go back to the join screen
+            if (data.message.includes("maximum capacity")) {
+                setTimeout(() => {
+                    // Disconnect websocket
+                    if (wsConnection) {
+                        wsConnection.close();
+                        wsConnection = null;
+                    }
+                    
+                    // If we're in receiver mode, go back to join options
+                    if (currentRole === 'receiver') {
+                        document.getElementById('fileTransfer').style.display = 'none';
+                        document.getElementById('joinRoomOptions').style.display = 'block';
+                    }
+                }, 1000);
             }
         }
 
@@ -1355,6 +1624,122 @@
                     });
             }
         }
+
+        // Regenerate steganographic text
+        async function regenerateStegoText() {
+            if (!currentSecretKey) {
+                alert('Secret key not available');
+                return;
+            }
+            
+            // Show loading indicator
+            document.getElementById('regeneratingIndicator').classList.add('show');
+            document.getElementById('regenerateBtn').disabled = true;
+            
+            try {
+                // Get regeneration parameters
+                const prompt = document.getElementById('regeneratePrompt').value.trim();
+                const model = document.getElementById('regenerateModel').value;
+                
+                // Call API to regenerate text
+                const response = await fetch('/api/regenerate-steganographic-text', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        secret_key: currentSecretKey,
+                        prompt: prompt || undefined,
+                        model: model
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Hide loading indicator
+                document.getElementById('regeneratingIndicator').classList.remove('show');
+                document.getElementById('regenerateBtn').disabled = false;
+                
+                if (data.status === 'success') {
+                    // Update the displayed text
+                    document.getElementById('stegoMessage').value = data.invitation_text;
+                    alert('Metin başarıyla yeniden oluşturuldu!');
+                } else {
+                    alert('Metin yeniden oluşturulamadı: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error regenerating text:', error);
+                document.getElementById('regeneratingIndicator').classList.remove('show');
+                document.getElementById('regenerateBtn').disabled = false;
+                alert('Metin yeniden oluşturulurken bir hata oluştu.');
+            }
+        }
+
+        // Load available models from API when page loads
+        async function loadAvailableModels() {
+            try {
+                const response = await fetch('/api/get-available-models');
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.models) {
+                    // Populate model select dropdowns
+                    const modelSelect = document.getElementById('modelSelect');
+                    const regenerateModel = document.getElementById('regenerateModel');
+                    
+                    // Clear existing options
+                    modelSelect.innerHTML = '';
+                    regenerateModel.innerHTML = '';
+                    
+                    // Add models to dropdowns
+                    Object.entries(data.models).forEach(([id, name]) => {
+                        const option1 = new Option(name, id);
+                        const option2 = new Option(name, id);
+                        
+                        modelSelect.appendChild(option1);
+                        regenerateModel.appendChild(option2);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading available models:', error);
+            }
+        }
+
+        // Display a styled error message
+        function displayErrorMessage(message) {
+            // Create an error alert if it doesn't exist yet
+            let errorAlert = document.getElementById('errorAlert');
+            if (!errorAlert) {
+                errorAlert = document.createElement('div');
+                errorAlert.id = 'errorAlert';
+                errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+                errorAlert.innerHTML = `
+                    <strong><i class="bi bi-exclamation-triangle-fill"></i> Hata!</strong> 
+                    <span id="errorMessage"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                // Insert the error alert at the top of the current view
+                const currentView = document.querySelector('.card[style*="display: block"]');
+                if (currentView) {
+                    currentView.querySelector('.card-body').prepend(errorAlert);
+                } else {
+                    // Fallback - add to body
+                    document.body.prepend(errorAlert);
+                }
+            }
+            
+            // Set the error message
+            document.getElementById('errorMessage').textContent = message;
+            
+            // Automatically hide after 5 seconds
+            setTimeout(() => {
+                const bsAlert = new bootstrap.Alert(errorAlert);
+                bsAlert.close();
+            }, 5000);
+        }
+
+        // Call loadAvailableModels on page load
+        document.addEventListener('DOMContentLoaded', loadAvailableModels);
     </script>
 </body>
 </html>

@@ -31,14 +31,16 @@ except ImportError:
 
 # Default model to use from Huggingface
 # DEFAULT_MODEL = "distilgpt2"  # Small but decent model
-DEFAULT_MODEL = "gpt2"  # Small but decent model
+DEFAULT_MODEL = "facebook/opt-1.3b"  # Small but decent model
 
-def load_model(model_name: str = DEFAULT_MODEL) -> bool:
+def load_model(model_name: str = DEFAULT_MODEL, use_4bit: bool = False, use_8bit: bool = False) -> bool:
     """
     Load the language model from Huggingface.
     
     Args:
         model_name: Name of the model to load from Huggingface
+        use_4bit: Whether to use 4-bit quantization (for large models)
+        use_8bit: Whether to use 8-bit quantization (for large models)
         
     Returns:
         True if model loaded successfully, False otherwise
@@ -51,9 +53,42 @@ def load_model(model_name: str = DEFAULT_MODEL) -> bool:
         
     try:
         logger.info(f"Loading language model: {model_name}")
-        # Load the model and tokenizer
+        # Load the tokenizer
         tokenizer = AutoTokenizer.from_pretrained(model_name)
-        transformer_model = AutoModelForCausalLM.from_pretrained(model_name)
+        
+        # Check model size to decide on quantization
+        if "7b" in model_name.lower() or "7B" in model_name or "mistral" in model_name.lower() or "llama" in model_name.lower():
+            # These models are too large for 6GB VRAM without quantization
+            use_4bit = True
+            logger.info(f"Automatically enabling 4-bit quantization for large model: {model_name}")
+        
+        # Load the model with quantization if requested
+        if use_4bit or use_8bit:
+            try:
+                from transformers import BitsAndBytesConfig
+                import bitsandbytes as bnb
+                
+                logger.info(f"Loading {model_name} with {'4-bit' if use_4bit else '8-bit'} quantization")
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=use_4bit,
+                    load_in_8bit=use_8bit if not use_4bit else False,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4"
+                )
+                
+                transformer_model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    quantization_config=quantization_config,
+                    device_map="auto"
+                )
+            except ImportError:
+                logger.warning("bitsandbytes not installed. Please install with: pip install bitsandbytes")
+                logger.warning("Falling back to regular model loading without quantization")
+                transformer_model = AutoModelForCausalLM.from_pretrained(model_name)
+        else:
+            # Regular model loading
+            transformer_model = AutoModelForCausalLM.from_pretrained(model_name)
         
         logger.info(f"Successfully loaded model: {model_name}")
         return True
@@ -69,7 +104,7 @@ def generate_text_with_model(prompt: str, max_length: int = 500) -> str:
     
     Args:
         prompt: The prompt to generate text from
-        max_length: Maximum length of generated text
+        max_length: Maximum length of generated text (used only as a guide)
         
     Returns:
         Generated text
@@ -91,10 +126,12 @@ def generate_text_with_model(prompt: str, max_length: int = 500) -> str:
         )
         
         # Generate text with better parameters
+        # Using max_new_tokens instead of max_length to avoid truncation warnings
+        max_new_tokens = max_length  # Use the provided max_length as max_new_tokens
+        
         response = generator(
             prompt,
-            max_length=min(max_length, 1024),
-            min_length=min(max_length // 2, 300),  # Ensure substantial generation
+            max_new_tokens=max_new_tokens,
             do_sample=True,
             top_k=50,
             top_p=0.95,
@@ -111,18 +148,7 @@ def generate_text_with_model(prompt: str, max_length: int = 500) -> str:
         # Extract the generated text from the response
         generated_text = response[0]['generated_text']
         
-        # Ensure we don't exceed max_length
-        if len(generated_text) > max_length:
-            # Try to cut at sentence boundaries
-            sentences = re.split(r'(?<=[.!?])\s+', generated_text[:max_length + 100])
-            text_within_limit = ""
-            for sentence in sentences:
-                if len(text_within_limit) + len(sentence) <= max_length:
-                    text_within_limit += sentence + " "
-                else:
-                    break
-            return text_within_limit.strip()
-        
+        # Return the full generated text without truncation
         return generated_text
         
     except Exception as e:
@@ -150,11 +176,18 @@ def fallback_generation(prompt: str, max_length: int = 500) -> str:
         # Create attention mask
         attention_mask = torch.ones(input_ids.shape, device=input_ids.device)
         
-        # Generate text with more basic parameters
+        # Calculate the length of the input in tokens
+        input_length = len(input_ids[0])
+        
+        # Set max_length as input length + desired new tokens
+        # This avoids truncation as it focuses on how many new tokens to generate
+        total_length = input_length + max_length
+        
+        # Generate text without using max_length directly
         output = transformer_model.generate(
             input_ids,
             attention_mask=attention_mask,
-            max_length=min(512, max_length),  # Shorter max length to be safe
+            max_new_tokens=max_length,  # Generate this many new tokens
             num_return_sequences=1,
             no_repeat_ngram_size=2,
             do_sample=True,
@@ -180,7 +213,7 @@ def generate_mock_text(prompt: str, max_length: int = 500) -> str:
     
     Args:
         prompt: The prompt (incorporated into mock implementation)
-        max_length: Maximum length of generated text
+        max_length: Maximum length of generated text (ignored to prevent truncation)
         
     Returns:
         Sample predefined text
@@ -224,17 +257,7 @@ def generate_mock_text(prompt: str, max_length: int = 500) -> str:
     # Modify the chosen text to include the prompt at the beginning
     full_text = f"{prompt}\n\n{best_match}"
     
-    # Ensure we don't exceed max length
-    if len(full_text) > max_length:
-        sentences = re.split(r'(?<=[.!?])\s+', full_text)
-        trimmed_text = ""
-        for sentence in sentences:
-            if len(trimmed_text) + len(sentence) + 1 <= max_length:
-                trimmed_text += sentence + " "
-            else:
-                break
-        return trimmed_text.strip()
-    
+    # Return the full text without truncation
     return full_text
 
 def generate_text(prompt: str, max_length: int = 500) -> str:

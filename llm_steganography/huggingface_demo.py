@@ -31,10 +31,16 @@ from llm_steganography.steganography import (
 
 # Define available models for demo
 AVAILABLE_MODELS = [
-    "distilgpt2",        # Fast, small model (good for demo)
-    "gpt2",              # Standard GPT-2 model
-    "gpt2-medium",       # Medium-sized GPT-2
-    "facebook/opt-125m", # Meta's OPT model (small)
+    # "distilgpt2",        # Fast, small model (good for demo)
+    # "gpt2",              # Standard GPT-2 model
+    # "facebook/opt-125m", # Meta's OPT model (small)
+    # "facebook/opt-350m", # Meta's OPT model (medium)
+    "facebook/opt-1.3b", # Meta's OPT model (better quality)
+    # "EleutherAI/pythia-410m", # Pythia model (small)
+    # "EleutherAI/pythia-1b",   # Pythia model (better quality)
+    # "bigscience/bloom-560m",  # Multilingual model (supports Turkish)
+    # "togethercomputer/RedPajama-INCITE-Base-1B-v1", # High quality text generation
+    # "stabilityai/stablelm-base-alpha-3b",  # Quality text with memory optimization
     # Add more models as needed
 ]
 
