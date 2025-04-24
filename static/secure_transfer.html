@@ -360,12 +360,12 @@
     </div>
     
     <div class="container">
-        <h1 class="text-center mb-4">Güvenli Dosya Transfer Sistemi</h1>
+        <h1 class="text-center mb-4">Secure File Transfer</h1>
 
         <!-- Initial Options Section -->
         <div id="initialOptions" class="card">
             <div class="card-header">
-                <h5 class="mb-0">Ne yapmak istiyorsunuz?</h5>
+                <h5 class="mb-0">Choose an operation</h5>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -373,8 +373,8 @@
                         <div class="card option-card" id="createRoomCard" onclick="showCreateRoomOptions()">
                             <div class="card-body text-center py-4">
                                 <i class="bi bi-plus-circle fs-1 text-primary mb-3"></i>
-                                <h5>Yeni Oda Oluştur</h5>
-                                <p class="text-muted">Dosya paylaşımı için yeni bir oda oluşturun</p>
+                                <h5>Create New Room</h5>
+                                <p class="text-muted">Create a new room for secure file transfer</p>
                             </div>
                         </div>
                     </div>
@@ -382,7 +382,7 @@
                         <div class="card option-card" id="joinRoomCard" onclick="showJoinRoomOptions()">
                             <div class="card-body text-center py-4">
                                 <i class="bi bi-door-open fs-1 text-primary mb-3"></i>
-                                <h5>Odaya Katıl</h5>
+                                <h5>Join a Room</h5>
                                 <p class="text-muted">Var olan bir odaya katılın</p>
                             </div>
                         </div>
@@ -394,13 +394,13 @@
         <!-- Create Room Options -->
         <div id="createRoomOptions" class="card" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Oda Oluşturma Seçenekleri</h5>
+                <h5 class="mb-0">Room Creation Options</h5>
                 <button class="btn btn-sm btn-outline-light" onclick="goBack()">
-                    <i class="bi bi-arrow-left"></i> Geri
+                    <i class="bi bi-arrow-left"></i> Back
                 </button>
             </div>
             <div class="card-body">
-                <p>Secret key nasıl paylaşılsın?</p>
+                <p>How should the secret key be shared?</p>
                 
                 <div class="row mb-4">
                     <div class="col-md-3 mb-3">
@@ -411,9 +411,9 @@
                                     <label class="form-check-label w-100" for="directOption">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-key fs-2 text-primary me-2"></i>
-                                            <h5 class="mb-0">Doğrudan</h5>
+                                            <h5 class="mb-0">Direct</h5>
                                         </div>
-                                        <p class="text-muted mb-0">Secret key düz metin olarak paylaşılır</p>
+                                        <p class="text-muted mb-0">Secret key will be shared as simple plaintext</p>
                                     </label>
                                 </div>
                             </div>
@@ -427,9 +427,9 @@
                                     <label class="form-check-label w-100" for="stegoOption">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-file-earmark-lock fs-2 text-primary me-2"></i>
-                                            <h5 class="mb-0">Metin Gizleme</h5>
+                                            <h5 class="mb-0">Hide in Text</h5>
                                         </div>
-                                        <p class="text-muted mb-0">Secret key doğal bir metin içinde gizlenir</p>
+                                        <p class="text-muted mb-0">Secret key will be hidden in text</p>
                                     </label>
                                 </div>
                             </div>
@@ -443,9 +443,9 @@
                                     <label class="form-check-label w-100" for="imageOption">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-image-fill fs-2 text-primary me-2"></i>
-                                            <h5 class="mb-0">Resim Gizleme</h5>
+                                            <h5 class="mb-0">Hide in Image</h5>
                                         </div>
-                                        <p class="text-muted mb-0">Secret key bir resim içinde gizlenir (LSB)</p>
+                                        <p class="text-muted mb-0">Secret key will be hidden in an image (LSB)</p>
                                     </label>
                                 </div>
                             </div>
@@ -459,9 +459,9 @@
                                     <label class="form-check-label w-100" for="emailOption">
                                         <div class="d-flex align-items-center mb-2">
                                             <i class="bi bi-envelope-fill fs-2 text-primary me-2"></i>
-                                            <h5 class="mb-0">Email Gizleme</h5>
+                                            <h5 class="mb-0">Hide in Mail</h5>
                                         </div>
-                                        <p class="text-muted mb-0">Bağlantı linki email üzerinden iletilir</p>
+                                        <p class="text-muted mb-0">Connection link will be in an e-mail</p>
                                     </label>
                                 </div>
                             </div>
@@ -473,30 +473,30 @@
                 <div id="stegoPromptContainer" class="mb-4" style="display: none;">
                     <div class="row">
                         <div class="col-md-8">
-                            <label for="stegoPrompt" class="form-label">Şifreleme için mesaj teması (opsiyonel):</label>
-                            <textarea class="form-control" id="stegoPrompt" rows="3" placeholder="Örneğin: 'Güvenli dosya paylaşımı hakkında bir mesaj yaz'"></textarea>
+                            <label for="stegoPrompt" class="form-label">Topic to be used in prompt (optional):</label>
+                            <textarea class="form-control" id="stegoPrompt" rows="3" placeholder="Example: 'Write a message about secure file transfer'"></textarea>
                             <div class="form-text">Bu temayla ilgili doğal bir mesaj oluşturulacak ve içine secret key gizlenecektir.</div>
                         </div>
                         <div class="col-md-4">
-                            <label for="modelSelect" class="form-label">AI Modeli:</label>
+                            <label for="modelSelect" class="form-label">AI Model:</label>
                             <select class="form-select" id="modelSelect">
                                 <option value="facebook/opt-1.3b">Meta OPT (1.3B)</option>
                                 <option value="EleutherAI/pythia-1b">Pythia (1B)</option>
                                 <option value="microsoft/phi-1_5">Microsoft Phi-1.5</option>
                                 <option value="gpt2">OpenAI GPT-2</option>
                             </select>
-                            <div class="form-text">Kullanılacak dil modeli</div>
+                            <div class="form-text">Language model to be used</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Image Upload (Hidden by Default) -->
                 <div id="imageUploadContainer" class="mb-4" style="display: none;">
-                    <label for="stegoImage" class="form-label">Secret key gizlenecek resmi seçin:</label>
+                    <label for="stegoImage" class="form-label">Choose image to hide secret key in:</label>
                     <input class="form-control" type="file" id="stegoImage" accept="image/*">
                     <div class="form-text">
-                        Desteklenen formatlar: PNG, JPG, JPEG, BMP, TIFF, WEBP<br>
-                        Secret key resmin içine LSB (en önemsiz bitler) yöntemiyle gizlenecektir.
+                        Supported formats: PNG, JPG, JPEG, BMP, TIFF, WEBP<br>
+                        Secret key will be hidden in image using the LSB (Least Significant Bits) method.
                     </div>
                 </div>
 
@@ -504,24 +504,24 @@
                 <div id="emailSetupContainer" class="mb-4" style="display: none;">
                     <div class="card">
                         <div class="card-header">
-                            <h6 class="mb-0">Email Gönderim Bilgileri</h6>
+                            <h6 class="mb-0">E-mail Information</h6>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label for="senderEmail" class="form-label">Gönderen Email Adresi:</label>
-                                <input type="email" class="form-control" id="senderEmail" placeholder="ornek@gmail.com">
-                                <div class="form-text">Gmail hesabınız önerilir</div>
+                                <label for="senderEmail" class="form-label">Sender E-mail Address:</label>
+                                <input type="email" class="form-control" id="senderEmail" placeholder="example@gmail.com">
+                                <div class="form-text">Gmail account recommended</div>
                             </div>
                             <div class="mb-3">
-                                <label for="appPassword" class="form-label">Uygulama Şifresi:</label>
+                                <label for="appPassword" class="form-label">App Password:</label>
                                 <input type="password" class="form-control" id="appPassword">
                                 <div class="form-text">
-                                    Gmail için <a href="https://myaccount.google.com/apppasswords" target="_blank">Uygulama Şifresi</a> oluşturmanız gerekiyor
+                                    Create an <a href="https://myaccount.google.com/apppasswords" target="_blank">app password</a> for transfer
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="receiverEmail" class="form-label">Alıcı Email Adresi:</label>
-                                <input type="email" class="form-control" id="receiverEmail" placeholder="alici@example.com">
+                                <label for="receiverEmail" class="form-label">Receiver E-mail Address:</label>
+                                <input type="email" class="form-control" id="receiverEmail" placeholder="receiver@example.com">
                             </div>
                         </div>
                     </div>
@@ -529,23 +529,23 @@
 
                 <div class="generating-indicator mb-3" id="generatingIndicator">
                     <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Yükleniyor...</span>
+                        <span class="visually-hidden">Loading...</span>
                     </div>
-                    <span>Oda oluşturuluyor, lütfen bekleyin...</span>
+                    <span>Creating room, please wait...</span>
                 </div>
 
                 <!-- Maximum receivers setting -->
                 <div class="mb-3">
-                    <label for="maxReceivers" class="form-label">Maksimum Alıcı Sayısı:</label>
+                    <label for="maxReceivers" class="form-label">Maximum Receiver Amount:</label>
                     <div class="input-group">
                         <input type="number" class="form-control" id="maxReceivers" min="0" value="0">
-                        <span class="input-group-text">kişi</span>
+                        <span class="input-group-text">people</span>
                     </div>
-                    <div class="form-text">Odaya katılabilecek maksimum kişi sayısı (0 = sınırsız)</div>
+                    <div class="form-text">Maximum people in the room (0 = unlimited)</div>
                 </div>
 
                 <div class="d-grid">
-                    <button class="btn btn-primary" id="createRoomBtn" onclick="createRoom()">Oda Oluştur</button>
+                    <button class="btn btn-primary" id="createRoomBtn" onclick="createRoom()">Create Room</button>
                 </div>
             </div>
         </div>
@@ -553,18 +553,18 @@
         <!-- Join Room Options -->
         <div id="joinRoomOptions" class="card" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Odaya Katıl</h5>
+                <h5 class="mb-0">Join Room</h5>
                 <button class="btn btn-sm btn-outline-light" onclick="goBack()">
-                    <i class="bi bi-arrow-left"></i> Geri
+                    <i class="bi bi-arrow-left"></i> Back
                 </button>
             </div>
             <div class="card-body">
                 <ul class="nav nav-tabs" id="joinTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="direct-tab" data-bs-toggle="tab" data-bs-target="#direct" type="button" role="tab">Secret Key Gir</button>
+                        <button class="nav-link active" id="direct-tab" data-bs-toggle="tab" data-bs-target="#direct" type="button" role="tab">Enter Secret Key</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="encrypted-tab" data-bs-toggle="tab" data-bs-target="#encrypted" type="button" role="tab">Şifreli Mesaj Gir</button>
+                        <button class="nav-link" id="encrypted-tab" data-bs-toggle="tab" data-bs-target="#encrypted" type="button" role="tab">Enter Hidden Message</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image" type="button" role="tab">Resim Yükle</button>
@@ -574,30 +574,30 @@
                     <div class="tab-pane fade show active" id="direct" role="tabpanel">
                         <div class="mb-3">
                             <label for="secretKey" class="form-label">Secret Key</label>
-                            <input type="text" class="form-control" id="secretKey" placeholder="Secret Key'i buraya girin">
+                            <input type="text" class="form-control" id="secretKey" placeholder="Enter secret key here">
                         </div>
                         <div class="d-grid">
-                            <button class="btn btn-primary" onclick="joinRoomWithKey()">Odaya Katıl</button>
+                            <button class="btn btn-primary" onclick="joinRoomWithKey()">Join Room</button>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="encrypted" role="tabpanel">
                         <div class="mb-3">
-                            <label for="encryptedMessage" class="form-label">Şifreli Mesaj</label>
+                            <label for="encryptedMessage" class="form-label">Steganographic Message</label>
                             <textarea class="form-control" id="encryptedMessage" placeholder="Şifreli mesajı buraya yapıştırın"></textarea>
-                            <div class="form-text">Şifreli mesaj içerisinden secret key çıkarılıp otomatik olarak odaya katılım sağlanacaktır.</div>
+                            <div class="form-text">Secret key will be extracted from the message and the room will be joined automatically.</div>
                         </div>
                         <div class="d-grid">
-                            <button class="btn btn-primary" onclick="extractKeyAndJoin()">Secret Key'i Çıkar ve Katıl</button>
+                            <button class="btn btn-primary" onclick="extractKeyAndJoin()">Extract Secret Key and Join</button>
                         </div>
                     </div>
                     <div class="tab-pane fade" id="image" role="tabpanel">
                         <div class="mb-3">
-                            <label for="stegoImageUpload" class="form-label">Şifreli Resim</label>
+                            <label for="stegoImageUpload" class="form-label">Steganographic Image</label>
                             <input class="form-control" type="file" id="stegoImageUpload" accept="image/*">
-                            <div class="form-text">Resim içerisine gizlenmiş secret key otomatik olarak çıkarılıp odaya katılım sağlanacaktır.</div>
+                            <div class="form-text">Secret key will be extracted from the image and the room will be joined automatically.</div>
                         </div>
                         <div class="d-grid">
-                            <button class="btn btn-primary" onclick="extractKeyFromImageAndJoin()">Secret Key'i Çıkar ve Katıl</button>
+                            <button class="btn btn-primary" onclick="extractKeyFromImageAndJoin()">Extract Secret Key and Join</button>
                         </div>
                     </div>
                 </div>
@@ -607,20 +607,20 @@
         <!-- Room Created with Direct Key -->
         <div id="roomCreatedDirect" class="card" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Oda Oluşturuldu</h5>
+                <h5 class="mb-0">Room Created</h5>
                 <button class="btn btn-sm btn-outline-light" onclick="goBack()">
-                    <i class="bi bi-arrow-left"></i> Geri
+                    <i class="bi bi-arrow-left"></i> Back
                 </button>
             </div>
             <div class="card-body">
-                <p>Secret Key oluşturuldu. Bu anahtarı dosya alacak kişi ile paylaşın:</p>
+                <p>Secret Key created. Share it with the receiver:</p>
                 <div class="secret-key mb-3" id="generatedKey"></div>
                 <div class="d-flex gap-2 mb-4">
                     <button class="btn btn-secondary" onclick="copyToClipboard('generatedKey')">
-                        <i class="bi bi-clipboard"></i> Kopyala
+                        <i class="bi bi-clipboard"></i> Copy
                     </button>
                     <button class="btn btn-primary" onclick="continueAsSender()">
-                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                        <i class="bi bi-send"></i> Continue as Sender
                     </button>
                 </div>
             </div>
@@ -629,39 +629,39 @@
         <!-- Room Created with Steganographic Key -->
         <div id="roomCreatedStego" class="card" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Gizli Anahtarlı Oda Oluşturuldu</h5>
+                <h5 class="mb-0">Room Created With Secret Key</h5>
                 <button class="btn btn-sm btn-outline-light" onclick="goBack()">
                     <i class="bi bi-arrow-left"></i> Geri
                 </button>
             </div>
             <div class="card-body">
-                <p>Aşağıdaki mesajı alıcı ile paylaşın. Secret key bu mesajın içinde gizli olarak saklanmıştır:</p>
+                <p>Share the message below with the receiver. Secret key is hidden inside:</p>
                 <div class="mb-3">
-                    <label for="stegoMessage" class="form-label">Gizli Anahtarlı Mesaj:</label>
+                    <label for="stegoMessage" class="form-label">Message With Secret Key:</label>
                     <textarea class="form-control" id="stegoMessage" readonly></textarea>
                 </div>
                 <div class="d-flex gap-2 mb-4">
                     <button class="btn btn-secondary" onclick="copyToClipboard('stegoMessage')">
-                        <i class="bi bi-clipboard"></i> Mesajı Kopyala
+                        <i class="bi bi-clipboard"></i> Copy Message
                     </button>
                     <button class="btn btn-primary" onclick="continueAsSender()">
-                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                        <i class="bi bi-send"></i> Continue As Sender
                     </button>
                 </div>
                 
                 <hr>
                 
                 <div class="mt-3">
-                    <h6>Metni Yeniden Oluştur</h6>
-                    <p class="text-muted">Metni beğenmediyseniz, aynı secret key ile yeniden oluşturabilirsiniz:</p>
+                    <h6>Recreate Message</h6>
+                    <p class="text-muted">Create another message for the same secret key:</p>
                     
                     <div class="row mb-3">
                         <div class="col-md-8">
-                            <label for="regeneratePrompt" class="form-label">Yeni Mesaj Teması:</label>
-                            <textarea class="form-control" id="regeneratePrompt" rows="2" placeholder="Yeniden oluşturma için farklı bir tema girebilirsiniz"></textarea>
+                            <label for="regeneratePrompt" class="form-label">New Message Topic:</label>
+                            <textarea class="form-control" id="regeneratePrompt" rows="2" placeholder="Different topic for new hidden message"></textarea>
                         </div>
                         <div class="col-md-4">
-                            <label for="regenerateModel" class="form-label">AI Modeli:</label>
+                            <label for="regenerateModel" class="form-label">AI Model:</label>
                             <select class="form-select" id="regenerateModel">
                                 <option value="facebook/opt-1.3b">Meta OPT (1.3B)</option>
                                 <option value="EleutherAI/pythia-1b">Pythia (1B)</option>
@@ -673,15 +673,15 @@
                     
                     <div class="d-grid">
                         <button class="btn btn-outline-primary" id="regenerateBtn" onclick="regenerateStegoText()">
-                            <i class="bi bi-arrow-repeat"></i> Metni Yeniden Oluştur
+                            <i class="bi bi-arrow-repeat"></i> Recreate Text
                         </button>
                     </div>
                     
                     <div class="generating-indicator mt-3" id="regeneratingIndicator">
                         <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Yükleniyor...</span>
+                            <span class="visually-hidden">Loading...</span>
                         </div>
-                        <span>Yeni metin oluşturuluyor, lütfen bekleyin...</span>
+                        <span>New text generating, please wait...</span>
                     </div>
                 </div>
             </div>
@@ -690,13 +690,13 @@
         <!-- Room Created with Image Steganography -->
         <div id="roomCreatedImage" class="card" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Resim Gizli Oda Oluşturuldu</h5>
+                <h5 class="mb-0">Room Created With Steganographic Image</h5>
                 <button class="btn btn-sm btn-outline-light" onclick="goBack()">
-                    <i class="bi bi-arrow-left"></i> Geri
+                    <i class="bi bi-arrow-left"></i> Back
                 </button>
             </div>
             <div class="card-body">
-                <p>Secret key resmin içine başarıyla gizlendi. Bu resmi odaya girecek kişi ile paylaşın:</p>
+                <p>Secret key succesfully hidden. Share it with the receiver:</p>
                 
                 <div class="stego-image-container">
                     <img id="stegoImagePreview" src="" alt="Steganographic Image">
@@ -704,7 +704,7 @@
                 
                 <div class="d-flex gap-2 mb-4">
                     <button class="btn btn-secondary" onclick="downloadStegoImage()">
-                        <i class="bi bi-download"></i> Resmi İndir
+                        <i class="bi bi-download"></i> Download Image
                     </button>
                     <button class="btn btn-primary" onclick="continueAsSender()">
                         <i class="bi bi-send"></i> Gönderici Olarak Devam Et
@@ -712,8 +712,8 @@
                 </div>
                 
                 <div class="info-text">
-                    <i class="bi bi-info-circle"></i> Bu resim görsel olarak orijinalinden farksızdır, ancak içinde odanın secret key'i gizlenmiştir.
-                    Karşı taraf bu resmi yükleyerek odaya otomatik olarak katılabilir.
+                    <i class="bi bi-info-circle"></i> This image has the room's secret key hidden inside.
+                    Receiver will automatically join the room after uploading this image.
                 </div>
             </div>
         </div>
@@ -721,35 +721,35 @@
         <!-- Room Created with Email -->
         <div id="roomCreatedEmail" class="card" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Email ile Oda Oluşturuldu</h5>
+                <h5 class="mb-0">Room Created With E-mail</h5>
                 <button class="btn btn-sm btn-outline-light" onclick="goBack()">
-                    <i class="bi bi-arrow-left"></i> Geri
+                    <i class="bi bi-arrow-left"></i> Back
                 </button>
             </div>
             <div class="card-body">
                 <div class="alert alert-success">
-                    <i class="bi bi-check-circle-fill me-2"></i> Bağlantı linki email ile başarıyla gönderildi!
+                    <i class="bi bi-check-circle-fill me-2"></i> Connection link sent succesfully via e-mail!
                 </div>
                 
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h6 class="mb-0">Email Gönderim Detayları</h6>
+                        <h6 class="mb-0">E-mail Details</h6>
                     </div>
                     <div class="card-body">
-                        <p><strong>Gönderen:</strong> <span id="emailSenderInfo"></span></p>
-                        <p><strong>Alıcı:</strong> <span id="emailReceiverInfo"></span></p>
-                        <p><strong>Bağlantı Linki:</strong> <span id="emailLinkInfo" class="text-primary"></span></p>
+                        <p><strong>Sender:</strong> <span id="emailSenderInfo"></span></p>
+                        <p><strong>Receiver:</strong> <span id="emailReceiverInfo"></span></p>
+                        <p><strong>Connection Linki:</strong> <span id="emailLinkInfo" class="text-primary"></span></p>
                     </div>
                 </div>
                 
                 <div class="d-grid">
                     <button class="btn btn-primary" onclick="continueAsSender()">
-                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                        <i class="bi bi-send"></i> Continue As Sender
                     </button>
                 </div>
                 
                 <div class="mt-3 info-text">
-                    <i class="bi bi-info-circle"></i> Alıcı, email içerisindeki bağlantı linkine tıklayarak odaya doğrudan katılabilir.
+                    <i class="bi bi-info-circle"></i> Receiver can join the room by clicking the connection link in e-mail.
                 </div>
             </div>
         </div>
@@ -757,16 +757,16 @@
         <!-- File Transfer Interface -->
         <div id="fileTransfer" class="card" style="display: none;">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Dosya Transferi</h5>
+                <h5 class="mb-0">File Transfer</h5>
                 <button class="btn btn-sm btn-outline-light" onclick="leaveRoom()">
-                    <i class="bi bi-box-arrow-right"></i> Odadan Ayrıl
+                    <i class="bi bi-box-arrow-right"></i> Leave Room
                 </button>
             </div>
             <div class="card-body">
                 <div class="room-info">
                     <div class="row">
                         <div class="col-md-6">
-                            <p><strong>Bağlantı Durumu:</strong> <span id="connectionStatus">Bağlanıyor...</span></p>
+                            <p><strong>Connection Status:</strong> <span id="connectionStatus">Connecting...</span></p>
                         </div>
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between">
@@ -779,28 +779,28 @@
 
                 <!-- Sender Interface -->
                 <div id="senderInterface" style="display: none;">
-                    <h5 class="mb-3">Dosya Gönder</h5>
+                    <h5 class="mb-3">Send File</h5>
                     <div class="mb-3">
-                        <label for="fileInput" class="form-label">Göndermek istediğiniz dosyayı seçin:</label>
+                        <label for="fileInput" class="form-label">Choose file to send:</label>
                         <input class="form-control" type="file" id="fileInput">
                     </div>
                     
                     <div class="card mb-3">
                         <div class="card-header">
-                            <h6 class="mb-0">Şifreleme Seçenekleri</h6>
+                            <h6 class="mb-0">Encryption Options</h6>
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label for="encryptionMethod" class="form-label">Şifreleme Metodu:</label>
+                                <label for="encryptionMethod" class="form-label">Encryption Metodu:</label>
                                 <select class="form-select" id="encryptionMethod">
-                                    <option value="aes-256-gcm">AES-256-GCM (Varsayılan)</option>
-                                    <option value="none">Şifrelemesiz</option>
+                                    <option value="aes-256-gcm">AES-256-GCM (Default)</option>
+                                    <option value="none">No Encryption</option>
                                 </select>
                             </div>
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" value="" id="integrityCheck" checked>
                                 <label class="form-check-label" for="integrityCheck">
-                                    Bütünlük Doğrulama (SHA-256)
+                                    Integrity Validation (SHA-256)
                                 </label>
                             </div>
                         </div>
@@ -808,41 +808,41 @@
                     
                     <div class="d-grid">
                         <button class="btn btn-primary" id="sendFileBtn" onclick="sendFile()" disabled>
-                            <i class="bi bi-upload"></i> Dosya Gönder
+                            <i class="bi bi-upload"></i> Send File
                         </button>
                     </div>
                 </div>
 
                 <!-- Receiver Interface -->
                 <div id="receiverInterface" style="display: none;">
-                    <h5 class="mb-3">Dosya Alımı</h5>
+                    <h5 class="mb-3">Receive File</h5>
                     <div class="alert alert-info" role="alert">
-                        <i class="bi bi-info-circle-fill"></i> Dosya gönderildiğinde otomatik olarak alınacaktır.
+                        <i class="bi bi-info-circle-fill"></i> Waiting for a sender...
                     </div>
                     
                     <div id="encryptionInfo" class="card mb-3" style="display: none;">
                         <div class="card-header">
-                            <h6 class="mb-0">Şifreleme Bilgisi</h6>
+                            <h6 class="mb-0">Encryption Information</h6>
                         </div>
                         <div class="card-body">
-                            <p id="encryptionMethodInfo">Şifreleme: Bilgi bekleniyor...</p>
-                            <p id="integrityCheckInfo">Bütünlük Doğrulama: Bilgi bekleniyor...</p>
+                            <p id="encryptionMethodInfo">Encryption: Awaiting information...</p>
+                            <p id="integrityCheckInfo">Integrity Validation: Awaiting information...</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Progress Section (Both Sender and Receiver) -->
                 <div id="transferProgress" style="display: none;">
-                    <h5 class="mt-4 mb-3">Transfer İlerlemesi</h5>
+                    <h5 class="mt-4 mb-3">Transfer Progress</h5>
                     <div class="file-info" id="fileInfo">
-                        Dosya bilgisi yükleniyor...
+                        Loading file information...
                     </div>
                     <div class="progress mb-3">
                         <div class="progress-bar progress-bar-striped progress-bar-animated" id="progressBar" role="progressbar" style="width: 0%">0%</div>
                     </div>
                     
                     <div class="log-container mb-4" id="transferLogs">
-                        <div class="log-entry info">Transfer başlatılıyor...</div>
+                        <div class="log-entry info">Starting transfer...</div>
                     </div>
                     
                     <div class="integrity-result" id="integrityResult">
@@ -851,7 +851,7 @@
                     
                     <div class="d-grid" id="downloadBtnContainer" style="display: none;">
                         <button class="btn btn-success" id="downloadBtn" onclick="downloadFile()">
-                            <i class="bi bi-download"></i> Dosyayı İndir
+                            <i class="bi bi-download"></i> Download File
                         </button>
                     </div>
                 </div>
@@ -900,11 +900,11 @@
                     currentSecretKey = secretKey;
                     setupAsReceiver();
                 } else {
-                    alert('Geçersiz Secret Key veya oda bulunamadı.');
+                    alert('Invalid secret key or nonexistent room.');
                 }
             } catch (error) {
                 console.error('Error joining room:', error);
-                alert('Odaya katılırken bir hata oluştu.');
+                alert('An error occured while joining room.');
             }
         }
 
@@ -991,7 +991,7 @@
                     const imageFile = imageInput.files[0];
                     
                     if (!imageFile) {
-                        alert('Lütfen bir resim seçin');
+                        alert('Please choose an image');
                         document.getElementById('generatingIndicator').classList.remove('show');
                         document.getElementById('createRoomBtn').disabled = false;
                         return;
@@ -999,7 +999,7 @@
                     
                     // Check if the file is an image
                     if (!imageFile.type.startsWith('image/')) {
-                        alert('Lütfen geçerli bir resim dosyası seçin');
+                        alert('Please choose a valid image!');
                         document.getElementById('generatingIndicator').classList.remove('show');
                         document.getElementById('createRoomBtn').disabled = false;
                         return;
@@ -1033,7 +1033,7 @@
                         document.getElementById('createRoomOptions').style.display = 'none';
                         document.getElementById('roomCreatedImage').style.display = 'block';
                     } else {
-                        alert('Oda oluşturulamadı: ' + data.message);
+                        alert('Room creation failed: ' + data.message);
                     }
                 } else if (useSteganography) {
                     // Get prompt if provided
@@ -1067,7 +1067,7 @@
                         document.getElementById('createRoomOptions').style.display = 'none';
                         document.getElementById('roomCreatedStego').style.display = 'block';
                     } else {
-                        alert('Oda oluşturulamadı: ' + data.message);
+                        alert('Room creation failed: ' + data.message);
                     }
                 } else if (useEmail) {
                     // Get email details
@@ -1076,7 +1076,7 @@
                     const receiverEmail = document.getElementById('receiverEmail').value.trim();
                     
                     if (!senderEmail || !appPassword || !receiverEmail) {
-                        alert('Lütfen tüm email bilgilerini doldurun');
+                        alert('Please fill all fields.');
                         document.getElementById('generatingIndicator').classList.remove('show');
                         document.getElementById('createRoomBtn').disabled = false;
                         return;
@@ -1112,7 +1112,7 @@
                         document.getElementById('createRoomOptions').style.display = 'none';
                         document.getElementById('roomCreatedEmail').style.display = 'block';
                     } else {
-                        alert('Oda oluşturulamadı: ' + data.message);
+                        alert('Room creation failed: ' + data.message);
                     }
                 } else {
                     // Create direct key room
@@ -1140,14 +1140,14 @@
                         document.getElementById('createRoomOptions').style.display = 'none';
                         document.getElementById('roomCreatedDirect').style.display = 'block';
                     } else {
-                        alert('Oda oluşturulamadı: ' + data.message);
+                        alert('Room creation failed: ' + data.message);
                     }
                 }
             } catch (error) {
                 console.error('Error creating room:', error);
                 document.getElementById('generatingIndicator').classList.remove('show');
                 document.getElementById('createRoomBtn').disabled = false;
-                alert('Oda oluşturulurken bir hata oluştu.');
+                alert('An error occured during room creation.');
             }
         }
 
@@ -1156,7 +1156,7 @@
             const secretKey = document.getElementById('secretKey').value.trim();
             
             if (!secretKey) {
-                alert('Lütfen bir Secret Key girin');
+                alert('Please enter a Secret Key');
                 return;
             }
             
@@ -1168,11 +1168,11 @@
                     currentSecretKey = secretKey;
                     setupAsReceiver();
                 } else {
-                    alert('Geçersiz Secret Key veya oda bulunamadı.');
+                    alert('Invalid secret key or nonexistent room.');
                 }
             } catch (error) {
                 console.error('Error joining room:', error);
-                alert('Odaya katılırken bir hata oluştu.');
+                alert('An error occured while joining a room.');
             }
         }
 
@@ -1181,7 +1181,7 @@
             const encryptedText = document.getElementById('encryptedMessage').value.trim();
             
             if (!encryptedText) {
-                alert('Lütfen şifreli bir mesaj girin');
+                alert('Please enter encrypted message');
                 return;
             }
             
@@ -1202,11 +1202,11 @@
                     currentSecretKey = data.secret_key;
                     setupAsReceiver();
                 } else {
-                    alert('Mesajdan secret key çıkarılamadı: ' + data.message);
+                    alert('Secret key could not be extracted: ' + data.message);
                 }
             } catch (error) {
                 console.error('Error extracting key:', error);
-                alert('Secret key çıkarılırken bir hata oluştu.');
+                alert('An error occured while extracting key');
             }
         }
 
@@ -1215,7 +1215,7 @@
             const imageInput = document.getElementById('stegoImageUpload');
             
             if (!imageInput.files || imageInput.files.length === 0) {
-                alert('Lütfen bir resim seçin');
+                alert('Please choose image');
                 return;
             }
             
@@ -1240,13 +1240,13 @@
                     currentSecretKey = data.secret_key;
                     setupAsReceiver();
                 } else {
-                    alert('Resimden secret key çıkarılamadı: ' + data.message);
+                    alert('Secret key could not be extracted: ' + data.message);
                 }
             } catch (error) {
                 // Reset loading
                 document.getElementById('image-tab').textContent = 'Resim Yükle';
                 console.error('Error extracting key from image:', error);
-                alert('Resimden secret key çıkarılırken bir hata oluştu.');
+                alert('An error occured during secret key extraction.');
             }
         }
 
@@ -1304,14 +1304,14 @@
             }
             
             const connectionStatus = document.getElementById('connectionStatus');
-            connectionStatus.textContent = 'Bağlanıyor...';
+            connectionStatus.textContent = 'Connecting...';
             
             // Create WebSocket connection
             wsConnection = new WebSocket(`ws://${window.location.host}/ws/${role}/${currentSecretKey}`);
             
             wsConnection.onopen = () => {
-                connectionStatus.textContent = 'Bağlandı';
-                addLogEntry('Sunucuya bağlantı kuruldu', 'info');
+                connectionStatus.textContent = 'Connected';
+                addLogEntry('Connected to server', 'info');
                 
                 if (role === 'sender') {
                     checkFileInputState();
@@ -1319,15 +1319,15 @@
             };
             
             wsConnection.onclose = (event) => {
-                connectionStatus.textContent = 'Bağlantı koptu';
+                connectionStatus.textContent = 'Connection lost';
                 
                 // Check if this was an abnormal closure with a reason
                 if (event.code === 1000) {
                     // Normal closure
-                    addLogEntry('Sunucu bağlantısı kesildi', 'info');
+                    addLogEntry('Connection to server lost', 'info');
                 } else {
                     // Abnormal closure
-                    addLogEntry('Sunucu bağlantısı kesildi: ' + (event.reason || 'Bilinmeyen hata'), 'error');
+                    addLogEntry('Connection to server lost: ' + (event.reason || 'Bilinmeyen hata'), 'error');
                 }
                 
                 if (role === 'sender') {
@@ -1337,8 +1337,8 @@
             
             wsConnection.onerror = (error) => {
                 console.error('WebSocket error:', error);
-                connectionStatus.textContent = 'Bağlantı hatası';
-                addLogEntry('Bağlantı hatası oluştu', 'error');
+                connectionStatus.textContent = 'Connnection error';
+                addLogEntry('Connnection error', 'error');
             };
             
             wsConnection.onmessage = handleWebSocketMessage;
@@ -1370,7 +1370,7 @@
                 } else if (currentRole === 'receiver') {
                     // Binary data - we now get a complete file at once, not chunks
                     receivedFileBlob = new Blob([event.data]);
-                    addLogEntry('Dosya alındı, işleniyor...', 'info');
+                    addLogEntry('File received, processing...', 'info');
                 }
             } catch (error) {
                 console.error('Error processing WebSocket message:', error);
