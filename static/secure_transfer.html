@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Güvenli Dosya Transfer Sistemi</title>
+    <title>Secure File Transfer System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
@@ -355,7 +355,7 @@
 </head>
 <body>
     <!-- Theme Toggle Button -->
-    <div class="theme-toggle" id="themeToggle" title="Tema Değiştir">
+    <div class="theme-toggle" id="themeToggle" title="Change Theme">
         <i class="bi bi-moon-fill"></i>
     </div>
     
@@ -383,7 +383,7 @@
                             <div class="card-body text-center py-4">
                                 <i class="bi bi-door-open fs-1 text-primary mb-3"></i>
                                 <h5>Join a Room</h5>
-                                <p class="text-muted">Var olan bir odaya katılın</p>
+                                <p class="text-muted">Join an existing room</p>
                             </div>
                         </div>
                     </div>
@@ -475,7 +475,7 @@
                         <div class="col-md-8">
                             <label for="stegoPrompt" class="form-label">Topic to be used in prompt (optional):</label>
                             <textarea class="form-control" id="stegoPrompt" rows="3" placeholder="Example: 'Write a message about secure file transfer'"></textarea>
-                            <div class="form-text">Bu temayla ilgili doğal bir mesaj oluşturulacak ve içine secret key gizlenecektir.</div>
+                            <div class="form-text">Secret key will be hidden in a natural message that will be written according to the topic.</div>
                         </div>
                         <div class="col-md-4">
                             <label for="modelSelect" class="form-label">AI Model:</label>
@@ -567,7 +567,7 @@
                         <button class="nav-link" id="encrypted-tab" data-bs-toggle="tab" data-bs-target="#encrypted" type="button" role="tab">Enter Hidden Message</button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image" type="button" role="tab">Resim Yükle</button>
+                        <button class="nav-link" id="image-tab" data-bs-toggle="tab" data-bs-target="#image" type="button" role="tab">Upload Image</button>
                     </li>
                 </ul>
                 <div class="tab-content" id="joinTabsContent">
@@ -583,7 +583,7 @@
                     <div class="tab-pane fade" id="encrypted" role="tabpanel">
                         <div class="mb-3">
                             <label for="encryptedMessage" class="form-label">Steganographic Message</label>
-                            <textarea class="form-control" id="encryptedMessage" placeholder="Şifreli mesajı buraya yapıştırın"></textarea>
+                            <textarea class="form-control" id="encryptedMessage" placeholder="Paste message here"></textarea>
                             <div class="form-text">Secret key will be extracted from the message and the room will be joined automatically.</div>
                         </div>
                         <div class="d-grid">
@@ -707,7 +707,7 @@
                         <i class="bi bi-download"></i> Download Image
                     </button>
                     <button class="btn btn-primary" onclick="continueAsSender()">
-                        <i class="bi bi-send"></i> Gönderici Olarak Devam Et
+                        <i class="bi bi-send"></i> Continue as Sender
                     </button>
                 </div>
                 
@@ -770,8 +770,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="d-flex justify-content-between">
-                                <p><strong>Gönderici:</strong> <span id="senderCount">0</span></p>
-                                <p><strong>Alıcı:</strong> <span id="receiverCount">0</span></p>
+                                <p><strong>Sender:</strong> <span id="senderCount">0</span></p>
+                                <p><strong>Receiver:</strong> <span id="receiverCount">0</span></p>
                             </div>
                         </div>
                     </div>
@@ -1224,7 +1224,7 @@
                 formData.append('image', imageInput.files[0]);
                 
                 // Show loading
-                document.getElementById('image-tab').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> İşleniyor...';
+                document.getElementById('image-tab').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
                 
                 const response = await fetch('/api/extract-key-from-image', {
                     method: 'POST',
@@ -1232,7 +1232,7 @@
                 });
                 
                 // Reset loading
-                document.getElementById('image-tab').textContent = 'Resim Yükle';
+                document.getElementById('image-tab').textContent = 'Upload Image';
                 
                 const data = await response.json();
                 
@@ -1244,7 +1244,7 @@
                 }
             } catch (error) {
                 // Reset loading
-                document.getElementById('image-tab').textContent = 'Resim Yükle';
+                document.getElementById('image-tab').textContent = 'Upload Image';
                 console.error('Error extracting key from image:', error);
                 alert('An error occured during secret key extraction.');
             }
@@ -1380,7 +1380,7 @@
         // Handle error messages from the server
         function handleErrorMessage(data) {
             // Log error
-            addLogEntry(`Hata: ${data.message}`, 'error');
+            addLogEntry(`Error: ${data.message}`, 'error');
             
             // Display the error using our new error display function
             displayErrorMessage(data.message);
@@ -1412,9 +1412,9 @@
                 document.getElementById('sendFileBtn').disabled = !data.ready_to_transfer;
                 
                 if (data.ready_to_transfer) {
-                    addLogEntry('Alıcı hazır, dosya gönderebilirsiniz', 'info');
+                    addLogEntry('Receiver ready, you may send a file', 'info');
                 } else if (data.receivers === 0) {
-                    addLogEntry('Alıcı bağlantısı bekleniyor', 'info');
+                    addLogEntry('Waiting for receiver connection', 'info');
                 }
             }
         }
@@ -1432,39 +1432,39 @@
                 receivedFileName = data.filename;
                 
                 document.getElementById('fileInfo').textContent = 
-                    `Alınacak dosya: ${data.filename} (${formatFileSize(data.filesize)})`;
+                    `Receiving file: ${data.filename} (${formatFileSize(data.filesize)})`;
                 
-                addLogEntry(`Dosya transferi başlatıldı: ${data.filename}`, 'info');
+                addLogEntry(`File transfer started: ${data.filename}`, 'info');
                 
                 // Show encryption information if available
                 if (data.encryptionOptions) {
                     document.getElementById('encryptionInfo').style.display = 'block';
                     
-                    let methodText = 'Şifreleme: ';
+                    let methodText = 'Encryption: ';
                     if (data.encryptionOptions.method === 'aes-256-gcm') {
                         methodText += 'AES-256-GCM';
-                        addLogEntry('Dosya AES-256-GCM ile şifrelenmiş', 'info');
+                        addLogEntry('File is encrypted with AES-256-GCM', 'info');
                     } else {
-                        methodText += 'Şifrelemesiz';
-                        addLogEntry('Dosya şifrelenmeden gönderiliyor', 'info');
+                        methodText += 'No Encryption';
+                        addLogEntry('File sending without encryption', 'info');
                     }
                     document.getElementById('encryptionMethodInfo').textContent = methodText;
                     
-                    let integrityText = 'Bütünlük Doğrulama: ';
+                    let integrityText = 'Integrity Validation: ';
                     if (data.encryptionOptions.integrityCheck) {
-                        integrityText += 'Aktif (SHA-256)';
-                        addLogEntry('SHA-256 bütünlük doğrulaması aktif', 'info');
+                        integrityText += 'Active (SHA-256)';
+                        addLogEntry('SHA-256 integrity validation active', 'info');
                     } else {
-                        integrityText += 'Pasif';
-                        addLogEntry('Bütünlük doğrulaması yapılmayacak', 'warning');
+                        integrityText += 'Passive';
+                        addLogEntry('Integrity validation inactive', 'warning');
                     }
                     document.getElementById('integrityCheckInfo').textContent = integrityText;
                 }
             } else {
                 document.getElementById('fileInfo').textContent = 
-                    `Gönderilen dosya: ${data.filename} (${formatFileSize(data.filesize)})`;
+                    `Sending file: ${data.filename} (${formatFileSize(data.filesize)})`;
                 
-                addLogEntry(`Dosya transferi başlatıldı: ${data.filename}`, 'info');
+                addLogEntry(`File transfer started: ${data.filename}`, 'info');
             }
         }
 
@@ -1479,18 +1479,18 @@
                 encryptionMetadata = data.encryption_metadata;
                 
                 if (data.encryption_metadata.aes_key) {
-                    addLogEntry('Şifreleme anahtarları alındı', 'info');
+                    addLogEntry('Keys received', 'info');
                 }
                 
                 if (data.encryption_metadata.file_hash) {
-                    addLogEntry('Dosya hash değeri alındı', 'info');
+                    addLogEntry('Hash value received', 'info');
                 }
             }
         }
 
         // Handle completed transfer
         function handleTransferComplete(data) {
-            addLogEntry('Dosya transferi tamamlandı', 'success');
+            addLogEntry('File transfer succesful', 'success');
             
             if (currentRole === 'receiver') {
                 receivedFileName = data.filename;
@@ -1512,12 +1512,12 @@
                     
                     if (data.integrity_verified) {
                         resultElement.className = 'integrity-result integrity-success';
-                        messageElement.innerHTML = '<i class="bi bi-check-circle-fill"></i> Dosya bütünlüğü doğrulandı, indirebilirsiniz.';
-                        addLogEntry('Bütünlük doğrulaması başarılı', 'success');
+                        messageElement.innerHTML = '<i class="bi bi-check-circle-fill"></i> Integrity validated, you may download the file.';
+                        addLogEntry('Integrity validated', 'success');
                     } else {
                         resultElement.className = 'integrity-result integrity-error';
-                        messageElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> UYARI: Dosya bütünlüğü doğrulanamadı! Dosya değişmiş olabilir.';
-                        addLogEntry('Bütünlük doğrulaması BAŞARISIZ!', 'error');
+                        messageElement.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> WARNING: Integrity validation failed! File may be tampered with.';
+                        addLogEntry('Integrity validation failed!', 'error');
                     }
                 }
             }
@@ -1526,12 +1526,12 @@
         // Process encrypted file (decryption)
         async function processEncryptedFile() {
             if (!receivedFileBlob || !encryptionMetadata) {
-                addLogEntry('Şifrelenmiş dosya işlenemiyor: Eksik veri', 'error');
+                addLogEntry('File could not be processed: Missing data', 'error');
                 return;
             }
             
             try {
-                addLogEntry('Şifrelenmiş dosya çözülüyor...', 'info');
+                addLogEntry('Decrypting file...', 'info');
                 
                 // Read file as ArrayBuffer
                 const fileData = await receivedFileBlob.arrayBuffer();
@@ -1552,13 +1552,13 @@
                 // Create a blob from decrypted data
                 receivedFileBlob = new Blob([decryptedData]);
                 
-                addLogEntry('Dosya başarıyla deşifre edildi', 'success');
+                addLogEntry('Decryption succesful!', 'success');
                 
                 // Show download button
                 document.getElementById('downloadBtnContainer').style.display = 'block';
             } catch (error) {
                 console.error('Decryption error:', error);
-                addLogEntry('Dosya deşifre edilirken hata oluştu: ' + error.message, 'error');
+                addLogEntry('Error with decryption: ' + error.message, 'error');
             }
         }
 
@@ -1620,7 +1620,7 @@
                 }
             } catch (error) {
                 console.error("Decryption error:", error);
-                throw new Error("Dosya deşifre edilemedi: " + error.message);
+                throw new Error("Decryption failed: " + error.message);
             }
         }
 
@@ -1657,7 +1657,7 @@
         // Send file through WebSocket
         function sendFile() {
             if (!selectedFile || !wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
-                alert('Dosya seçilmedi veya bağlantı kurulmadı');
+                alert('File not selected or connection could not be established');
                 return;
             }
 
@@ -1672,7 +1672,7 @@
             document.getElementById('progressBar').style.width = '0%';
             document.getElementById('progressBar').textContent = '0%';
             
-            addLogEntry('Dosya transferi başlatılıyor...', 'info');
+            addLogEntry('Starting file transfer...', 'info');
             
             // Log encryption options
             if (encryptionOptions.method === 'aes-256-gcm') {
@@ -1808,20 +1808,20 @@
             if (element.tagName === 'TEXTAREA') {
                 navigator.clipboard.writeText(element.value)
                     .then(() => {
-                        alert('Metin panoya kopyalandı!');
+                        alert('Text copied to clipboard!');
                     })
                     .catch(err => {
-                        console.error('Kopyalama hatası:', err);
-                        alert('Kopyalama başarısız oldu.');
+                        console.error('Copy error:', err);
+                        alert('Copying failed.');
                     });
             } else {
                 navigator.clipboard.writeText(element.textContent)
                     .then(() => {
-                        alert('Metin panoya kopyalandı!');
+                        alert('Text copied to clipboard!');
                     })
                     .catch(err => {
-                        console.error('Kopyalama hatası:', err);
-                        alert('Kopyalama başarısız oldu.');
+                        console.error('Copying failed.:', err);
+                        alert('Copying failed..');
                     });
             }
         }
@@ -1864,15 +1864,15 @@
                 if (data.status === 'success') {
                     // Update the displayed text
                     document.getElementById('stegoMessage').value = data.invitation_text;
-                    alert('Metin başarıyla yeniden oluşturuldu!');
+                    alert('Text succesfully recreated!');
                 } else {
-                    alert('Metin yeniden oluşturulamadı: ' + data.message);
+                    alert('Text could not be recreated: ' + data.message);
                 }
             } catch (error) {
                 console.error('Error regenerating text:', error);
                 document.getElementById('regeneratingIndicator').classList.remove('show');
                 document.getElementById('regenerateBtn').disabled = false;
-                alert('Metin yeniden oluşturulurken bir hata oluştu.');
+                alert('An error occured during text recreation.');
             }
         }
 
