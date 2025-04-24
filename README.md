@@ -1,49 +1,46 @@
-# Güvenli Dosya Transferi Uygulaması
+# Encrypted File Transfer
 
-Bu uygulama, güvenli bir şekilde gerçek zamanlı dosya transferi yapabilmenize olanak sağlar. Computer Security dersi projesi olarak tasarlanmıştır.
+Encrypted file transfer project for a Computer Security Project.
 
-## Özellikler
+## Features
 
-- Secret key ile güvenli oda oluşturma
-- WebSocket bağlantısı ile gerçek zamanlı dosya transferi
-- Hem gönderici hem alıcı rollerini destekler
-- Transfer ilerleme durumunu izleme
-- Basit ve kullanıcı dostu arayüz
+- Room creation with a secret key
+- Real-time file transfer with WebSocket connection
+- Sender/Receiver roles
+- Transfer progress information
+- Simple and user-friendly interface
 
-## Kurulum
+## Setup
 
-1. Gerekli paketleri yükleyin:
-```bash
+1. Install Required Packages:
+```
 pip install -r requirements.txt
 ```
 
-2. Uygulamayı başlatın:
-```bash
+2. Start App:
+```
 python main.py
 ```
 
-3. Tarayıcınızda `http://localhost:8000` adresini ziyaret edin.
+3. Go to `http://localhost:8000` in your browser.
 
-## Kullanım
+## Usage
 
-### Dosya Göndermek İçin
-1. "Yeni Oda Oluştur" butonuna tıklayın
-2. Oluşturulan secret key'i alıcı ile paylaşın
-3. "Gönderici Olarak Devam Et" butonuna tıklayın
-4. Alıcının bağlantı kurmasını bekleyin
-5. Dosya seçin ve "Dosya Gönder" butonuna tıklayın
+### Sending
+1. Click "Create New Room"
+2. Share secret key with receiver
+3. Click "Continue As Sender"
+4. Wait for receiver information
+5. Select file and press "Send File"
 
-### Dosya Almak İçin
-1. "Odaya Katıl" butonuna tıklayın
-2. Göndericinin size verdiği secret key'i girin
-3. "Katıl" butonuna tıklayın
-4. Gönderici dosya gönderdiğinde, otomatik olarak indirilecektir
+### Receiving
+1. Click "Join New Room"
+2. Enter the secret key received from sender
+3. Clicj "Join"
+4. The file will the automatically received after the sender uploads it
 
-## Güvenlik
+## Security
 
-Bu uygulama şu güvenlik önlemlerini içermektedir:
-- Kriptografik olarak güvenli secret key üretimi
-- WebSocket bağlantıları için anahtarla doğrulama
-- İstemci tarafında veri doğrulama
-
-Not: Bu uygulama eğitim amaçlı geliştirilmiştir. Şu an dosya içeriği şifrelenmeden aktarılmaktadır.
+- Cryptographically secure secret key generation
+- WebSocket connection validation
+- Client-side data integrity validation
