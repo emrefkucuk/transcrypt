@@ -696,7 +696,7 @@
                 </button>
             </div>
             <div class="card-body">
-                <p>Secret key succesfully hidden. Share it with the receiver:</p>
+                <p>Secret key successfully hidden. Share it with the receiver:</p>
                 
                 <div class="stego-image-container">
                     <img id="stegoImagePreview" src="" alt="Steganographic Image">
@@ -728,7 +728,7 @@
             </div>
             <div class="card-body">
                 <div class="alert alert-success">
-                    <i class="bi bi-check-circle-fill me-2"></i> Connection link sent succesfully via e-mail!
+                    <i class="bi bi-check-circle-fill me-2"></i> Connection link sent successfully via e-mail!
                 </div>
                 
                 <div class="card mb-4">
@@ -1490,7 +1490,7 @@
 
         // Handle completed transfer
         function handleTransferComplete(data) {
-            addLogEntry('File transfer succesful', 'success');
+            addLogEntry('File transfer successful', 'success');
             
             if (currentRole === 'receiver') {
                 receivedFileName = data.filename;
@@ -1552,7 +1552,7 @@
                 // Create a blob from decrypted data
                 receivedFileBlob = new Blob([decryptedData]);
                 
-                addLogEntry('Decryption succesful!', 'success');
+                addLogEntry('Decryption successful!', 'success');
                 
                 // Show download button
                 document.getElementById('downloadBtnContainer').style.display = 'block';
@@ -1864,7 +1864,7 @@
                 if (data.status === 'success') {
                     // Update the displayed text
                     document.getElementById('stegoMessage').value = data.invitation_text;
-                    alert('Text succesfully recreated!');
+                    alert('Text successfully recreated!');
                 } else {
                     alert('Text could not be recreated: ' + data.message);
                 }
