@@ -1,9 +1,11 @@
 import logging
 import os
 import json
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Depends, Body, UploadFile, File, Form
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Depends, Body, UploadFile, File, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing import Optional, Dict, Any, List
 import uvicorn
 import binascii
@@ -52,6 +54,31 @@ static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
+# Error handlers for 404 and other HTTP exceptions
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        # Return the custom 404 page
+        with open(os.path.join(static_dir, "404.html"), "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content, status_code=404)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": str(exc.detail)}
+    )
+
+@app.exception_handler(FastAPIHTTPException)
+async def fastapi_http_exception_handler(request: Request, exc: FastAPIHTTPException):
+    if exc.status_code == 404:
+        # Return the custom 404 page
+        with open(os.path.join(static_dir, "404.html"), "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content, status_code=404)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": str(exc.detail)}
+    )
+
 # Test için encrypt/decrypt edilmiş dosyaları saklayacağımız klasör
 encrypted_files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "encrypted_files")
 os.makedirs(encrypted_files_dir, exist_ok=True)
@@ -65,7 +92,7 @@ manager = ConnectionManager()
 
 @app.get("/", response_class=HTMLResponse)
 async def get_home():
-    with open(os.path.join(static_dir, "index.html"), "r", encoding="utf-8") as f:
+    with open(os.path.join(static_dir, "secure_transfer.html"), "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
 @app.get("/secure-transfer", response_class=HTMLResponse)
