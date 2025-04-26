@@ -546,33 +546,69 @@ async def test_encrypt_file(file: UploadFile = File(...)):
     except Exception as e:
         logger.error(f"Error encrypting file: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error encrypting file: {str(e)}")
+    
+@app.post("/api/test/encrypt-file-chacha")
+async def test_encrypt_file_chacha(file: UploadFile = File(...)):
+    """
+    Test endpoint to encrypt an uploaded file using ChaCha20-Poly1305.
+    """
+    try:
+        # Read the file content
+        file_content = await file.read()
+        
+        # Generate ChaCha20 key
+        chacha_key = generate_chacha_key()
+        
+        # Encrypt the file
+        encrypted_package = encrypt_file_with_chacha(file_content, chacha_key)
+        
+        # Generate a unique filename for the encrypted file
+        original_filename = file.filename
+        file_ext = os.path.splitext(original_filename)[1]
+        encrypted_filename = f"chacha_encrypted_{generate_secret_key(16)}{file_ext}"
+        encrypted_filepath = os.path.join(encrypted_files_dir, encrypted_filename)
+        
+        # Save the encrypted data to disk
+        with open(encrypted_filepath, "wb") as f:
+            f.write(encrypted_package['encrypted_data'])
+        
+        # Store encryption metadata for later decryption
+        encryption_keys[encrypted_filename] = {
+            "chacha_key": binascii.hexlify(chacha_key).decode('utf-8'),
+            "nonce": binascii.hexlify(encrypted_package['nonce']).decode('utf-8'),
+            "original_filename": original_filename,
+            "file_hash": calculate_file_hash(file_content),
+            "method": "chacha20-poly1305"
+        }
+        
+        logger.info(f"File encrypted with ChaCha20-Poly1305 and saved as {encrypted_filename}")
+        
+        return JSONResponse(content={
+            "status": "success",
+            "encrypted_filename": encrypted_filename,
+            "original_filename": original_filename,
+            "message": "File encrypted successfully with ChaCha20-Poly1305"
+        })
+            
+    except Exception as e:
+        logger.error(f"Error encrypting file with ChaCha20: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error encrypting file: {str(e)}")
 
 @app.get("/api/test/decrypt-file/{filename}")
 async def test_decrypt_file(filename: str):
-    """
-    Test endpoint to decrypt a previously encrypted file.
-    Provide the encrypted filename to download the decrypted file.
-    """
-    try:
-        # Check if the file exists
-        encrypted_filepath = os.path.join(encrypted_files_dir, filename)
-        if not os.path.exists(encrypted_filepath):
-            raise HTTPException(status_code=404, detail="Encrypted file not found")
-        
-        # Check if we have the encryption keys
-        if filename not in encryption_keys:
-            raise HTTPException(status_code=404, detail="Encryption keys not found for this file")
-        
-        # Get the encryption metadata
-        metadata = encryption_keys[filename]
+    # ... existing code ...
+    
+    # Get the encryption metadata
+    metadata = encryption_keys[filename]
+    
+    # Check which encryption method was used
+    method = metadata.get("method", "aes-256-gcm")  # Default to AES for backward compatibility
+    
+    if method == "aes-256-gcm":
+        # Existing AES decryption code...
         aes_key = binascii.unhexlify(metadata["aes_key"])
         iv = binascii.unhexlify(metadata["iv"])
         tag = binascii.unhexlify(metadata["tag"])
-        original_filename = metadata.get("original_filename", "decrypted_file")
-        
-        # Read the encrypted file
-        with open(encrypted_filepath, "rb") as f:
-            encrypted_data = f.read()
         
         # Create the encrypted package
         encrypted_package = {
@@ -584,33 +620,19 @@ async def test_decrypt_file(filename: str):
         # Decrypt the file
         decrypted_data = decrypt_file_with_aes(encrypted_package, aes_key)
         
-        # Calculate hash for integrity verification
-        decrypted_hash = calculate_file_hash(decrypted_data)
-        is_intact = decrypted_hash == metadata.get("file_hash")
+    elif method == "chacha20-poly1305":
+        # ChaCha20-Poly1305 decryption
+        chacha_key = binascii.unhexlify(metadata["chacha_key"])
+        nonce = binascii.unhexlify(metadata["nonce"])
         
-        if not is_intact:
-            logger.warning(f"Integrity check failed for {filename}")
+        # Create the encrypted package
+        encrypted_package = {
+            'encrypted_data': encrypted_data,
+            'nonce': nonce
+        }
         
-        # Create a temporary file for the decrypted content
-        temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        decrypted_filepath = os.path.join(temp_dir, original_filename)
-        with open(decrypted_filepath, "wb") as f:
-            f.write(decrypted_data)
-        
-        logger.info(f"File {filename} decrypted successfully")
-        
-        # Return the file as an attachment for download
-        return FileResponse(
-            path=decrypted_filepath, 
-            filename=original_filename,
-            media_type="application/octet-stream"
-        )
-            
-    except Exception as e:
-        logger.error(f"Error decrypting file: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error decrypting file: {str(e)}")
+        # Decrypt the file
+        decrypted_data = decrypt_file_with_chacha(encrypted_package, chacha_key)
 
 @app.websocket("/ws/sender/{secret_key}")
 async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
