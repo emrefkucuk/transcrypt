@@ -5,6 +5,7 @@ import os
 import base64
 import hashlib
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
@@ -206,6 +207,68 @@ def decrypt_file_with_aes(encrypted_package: Dict[str, bytes], aes_key: bytes) -
     
     # Decrypt the file data
     decrypted_data = decryptor.update(encrypted_data) + decryptor.finalize()
+    
+    return decrypted_data
+
+
+def generate_chacha_key() -> bytes:
+    """
+    Generate a random ChaCha20-Poly1305 key.
+    
+    Returns:
+        Random bytes to be used as ChaCha20 key (32 bytes)
+    """
+    return os.urandom(32)  # ChaCha20 requires a 32-byte key
+
+
+def encrypt_file_with_chacha(file_data: bytes, chacha_key: bytes) -> Dict[str, bytes]:
+    """
+    Encrypt a file using ChaCha20-Poly1305.
+    
+    Args:
+        file_data: Raw bytes of the file to encrypt
+        chacha_key: ChaCha20 key for encryption
+        
+    Returns:
+        Dictionary containing encrypted data and nonce
+    """
+    # Generate a random nonce
+    nonce = os.urandom(12)  # 96 bits for ChaCha20Poly1305
+    
+    # Create ChaCha20Poly1305 cipher
+    cipher = ChaCha20Poly1305(chacha_key)
+    
+    # Encrypt the file data
+    # The tag is automatically included in the ciphertext with this API
+    encrypted_data = cipher.encrypt(nonce, file_data, None)
+    
+    return {
+        'encrypted_data': encrypted_data,
+        'nonce': nonce
+    }
+
+
+def decrypt_file_with_chacha(encrypted_package: Dict[str, bytes], chacha_key: bytes) -> bytes:
+    """
+    Decrypt a file using ChaCha20-Poly1305.
+    
+    Args:
+        encrypted_package: Dictionary containing encrypted data and nonce
+        chacha_key: ChaCha20 key for decryption
+        
+    Returns:
+        Raw bytes of the decrypted file
+    """
+    # Extract components from the encrypted package
+    encrypted_data = encrypted_package['encrypted_data']
+    nonce = encrypted_package['nonce']
+    
+    # Create ChaCha20Poly1305 cipher
+    cipher = ChaCha20Poly1305(chacha_key)
+    
+    # Decrypt the file data
+    # This will also verify the authentication tag
+    decrypted_data = cipher.decrypt(nonce, encrypted_data, None)
     
     return decrypted_data
 
