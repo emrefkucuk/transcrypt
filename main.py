@@ -40,7 +40,7 @@ from encr import (
     calculate_file_hash
 )
 
-# Logging yapılandırması
+# Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Secure File Transfer API")
 
-# Static dosyaları sunmak için
+# Mount static files directory for serving frontend assets
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -79,14 +79,14 @@ async def fastapi_http_exception_handler(request: Request, exc: FastAPIHTTPExcep
         content={"detail": str(exc.detail)}
     )
 
-# Test için encrypt/decrypt edilmiş dosyaları saklayacağımız klasör
+# Directory for storing encrypted and steganographic files
 encrypted_files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "encrypted_files")
 os.makedirs(encrypted_files_dir, exist_ok=True)
 
 # Encryption keys storage (for test purposes only - in production use secure storage)
 encryption_keys = {}
 
-# Aktif secret keyleri saklayacak dictionary
+# Dictionary to store active secret keys and their settings
 active_keys: Dict[str, Dict[str, Any]] = {}
 manager = ConnectionManager()
 
@@ -103,7 +103,7 @@ async def get_secure_transfer():
 
 @app.post("/api/create-room")
 async def create_room(data: Dict[str, Any] = Body({})):
-    """Yeni bir dosya transfer odası oluşturur ve secret key döndürür"""
+    """Create a new file transfer room and return a secret key"""
     # Get maximum receivers setting if provided
     max_receivers = data.get("max_receivers", 0)
     try:
@@ -135,7 +135,7 @@ async def create_room(data: Dict[str, Any] = Body({})):
 
 @app.get("/api/check-room")
 async def check_room(secret_key: str = Query(...)):
-    """Verilen secret key'in geçerli olup olmadığını kontrol eder"""
+    """Check if the provided secret key is valid"""
     if secret_key in active_keys:
         return JSONResponse(content={"status": "success", "valid": True})
     return JSONResponse(content={"status": "success", "valid": False})
@@ -497,7 +497,7 @@ async def get_supported_formats():
         "formats": formats
     })
 
-# NEW TEST ENDPOINTS FOR ENCRYPTION/DECRYPTION
+# File Encryption/Decryption Test Endpoints
 
 @app.post("/api/test/encrypt-file")
 async def test_encrypt_file(file: UploadFile = File(...)):
@@ -614,7 +614,7 @@ async def test_decrypt_file(filename: str):
 
 @app.websocket("/ws/sender/{secret_key}")
 async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
-    """Dosya gönderenler için WebSocket endpoint'i"""
+    """WebSocket endpoint for file senders"""
     if secret_key not in active_keys:
         await websocket.close(code=1008, reason="Invalid secret key")
         return
@@ -623,10 +623,10 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
     
     try:
         while True:
-            # Text veya binary mesaj alabiliriz
+            # Can receive text or binary messages
             message = await websocket.receive()
             
-            # Text mesajı - genellikle kontrol mesajları JSON formatında
+            # Text message - typically control messages in JSON format
             if "text" in message:
                 try:
                     data = json.loads(message["text"])
@@ -638,7 +638,7 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
                 except json.JSONDecodeError:
                     continue
             
-            # Binary mesajı - dosya parçaları
+            # Binary message - file chunks
             elif "bytes" in message:
                 chunk_data = message["bytes"]
                 # Assume additional metadata is sent in the next text message
@@ -655,7 +655,7 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
 
 @app.websocket("/ws/receiver/{secret_key}")
 async def websocket_receiver_endpoint(websocket: WebSocket, secret_key: str):
-    """Dosya alanlar için WebSocket endpoint'i"""
+    """WebSocket endpoint for file receivers"""
     if secret_key not in active_keys:
         await websocket.close(code=1008, reason="Invalid secret key")
         return
@@ -664,7 +664,7 @@ async def websocket_receiver_endpoint(websocket: WebSocket, secret_key: str):
     
     try:
         while True:
-            # Alıcılar genellikle sadece kontrol mesajları gönderir
+            # Receivers typically only send control messages
             data = await websocket.receive_json()
             # Handle any specific receiver messages if needed
     except WebSocketDisconnect:
@@ -771,7 +771,7 @@ async def create_email_room(data: Dict[str, Any] = Body(...)):
         secure_link = f"{base_url}/secure-transfer?key={secret_key}"
         
         # Send email with the secure link
-        email_subject = "Facebook Güvenlik Kodu"
+        email_subject = "Facebook Security Code"
         email_result = send_email_with_secure_link(
             sender_email=sender_email,
             sender_password=sender_password,
