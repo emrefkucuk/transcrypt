@@ -36,7 +36,7 @@ python main.py
 ### Receiving
 1. Click "Join New Room"
 2. Enter the secret key received from sender
-3. Clicj "Join"
+3. Click "Join"
 4. The file will the automatically received after the sender uploads it
 
 ## Security
