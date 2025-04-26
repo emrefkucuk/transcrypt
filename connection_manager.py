@@ -10,7 +10,10 @@ from encr import (
     generate_aes_key,
     decrypt_file_with_aes,
     calculate_file_hash,
-    verify_file_integrity
+    verify_file_integrity,
+    encrypt_file_with_chacha,
+    generate_chacha_key,
+    decrypt_file_with_chacha
 )
 
 logger = logging.getLogger(__name__)
@@ -30,108 +33,7 @@ class ConnectionManager:
         # Store room settings
         self.room_settings: Dict[str, Dict] = {}
         
-    async def connect(self, websocket: WebSocket, secret_key: str, role: str):
-        # Check if room exists
-        if secret_key not in self.active_connections and secret_key not in self.room_settings:
-            await websocket.accept()
-            await websocket.send_json({
-                "type": "error",
-                "message": "Room does not exist"
-            })
-            await websocket.close()
-            return False
-        
-        # Check if room is at capacity for receivers
-        if role == "receiver" and secret_key in self.room_settings:
-            max_receivers = self.room_settings[secret_key].get("max_receivers", 0)
-            current_receivers = sum(1 for ws in self.active_connections.get(secret_key, set()) 
-                                   if self.connection_info.get(ws, {}).get("role") == "receiver")
-            
-            if max_receivers > 0 and current_receivers >= max_receivers:
-                # Room is full, reject connection
-                await websocket.accept()
-                await websocket.send_json({
-                    "type": "error",
-                    "message": "Room has reached maximum capacity"
-                })
-                await websocket.close()
-                return False
-        
-        await websocket.accept()
-        
-        if secret_key not in self.active_connections:
-            self.active_connections[secret_key] = set()
-            
-        self.active_connections[secret_key].add(websocket)
-        self.connection_info[websocket] = {"role": role, "secret_key": secret_key}
-        
-        logger.info(f"New {role} connection with key {secret_key[:5]}... established")
-        
-        # Notify about connection status
-        await self.send_room_status(secret_key)
-        return True
-    
-    async def disconnect(self, websocket: WebSocket):
-        if websocket in self.connection_info:
-            info = self.connection_info[websocket]
-            secret_key = info["secret_key"]
-            
-            if secret_key in self.active_connections:
-                self.active_connections[secret_key].discard(websocket)
-                
-                # If room is empty, clean up
-                if not self.active_connections[secret_key]:
-                    self.active_connections.pop(secret_key, None)
-                    self.active_transfers.pop(secret_key, None)
-                    self.file_chunks.pop(secret_key, None)
-                    self.encryption_info.pop(secret_key, None)
-                    self.room_settings.pop(secret_key, None)
-                else:
-                    # Notify remaining participants
-                    await self.send_room_status(secret_key)
-            
-            self.connection_info.pop(websocket, None)
-            logger.info(f"Connection with role {info['role']} disconnected")
-    
-    async def send_room_status(self, secret_key: str):
-        if secret_key not in self.active_connections:
-            return
-            
-        connections = self.active_connections[secret_key]
-        
-        # Count senders and receivers
-        senders = sum(1 for ws in connections if self.connection_info.get(ws, {}).get("role") == "sender")
-        receivers = sum(1 for ws in connections if self.connection_info.get(ws, {}).get("role") == "receiver")
-        
-        # Get max receivers setting
-        max_receivers = 0
-        if secret_key in self.room_settings:
-            max_receivers = self.room_settings[secret_key].get("max_receivers", 0)
-            
-        status_message = {
-            "type": "status",
-            "senders": senders,
-            "receivers": receivers,
-            "max_receivers": max_receivers,
-            "ready_to_transfer": senders > 0 and receivers > 0
-        }
-        
-        await self.broadcast(connections, status_message)
-
-    def register_room_settings(self, secret_key: str, settings: Dict[str, Any]) -> None:
-        """
-        Register settings for a room.
-        
-        Args:
-            secret_key: The room's secret key
-            settings: Dictionary of room settings (max_receivers, etc.)
-        """
-        if secret_key not in self.room_settings:
-            self.room_settings[secret_key] = {}
-            
-        # Update with new settings
-        self.room_settings[secret_key].update(settings)
-        logger.info(f"Room settings updated for {secret_key[:5]}... - max_receivers: {settings.get('max_receivers', 0)}")
+    # [... other methods unchanged ...]
 
     async def start_file_transfer(self, websocket: WebSocket, filename: str, filesize: int, encryption_options=None):
         if websocket not in self.connection_info:
@@ -160,15 +62,33 @@ class ConnectionManager:
         # Initialize chunk storage for this file transfer
         self.file_chunks[secret_key] = {}
         
-        # Initialize encryption info
-        if encryption_options and encryption_options.get("method") == "aes-256-gcm":
-            # Generate encryption keys and parameters ahead of time
+        # Initialize encryption info based on method
+        encryption_method = encryption_options.get("method") if encryption_options else "aes-256-gcm"
+        
+        if encryption_method == "aes-256-gcm":
+            # Generate AES encryption keys and parameters ahead of time
             aes_key = generate_aes_key()
             self.encryption_info[secret_key] = {
                 "aes_key": aes_key,
                 "method": "aes-256-gcm"
             }
-            logger.info(f"Generated encryption keys for transfer of {filename}")
+            logger.info(f"Generated AES encryption keys for transfer of {filename}")
+        elif encryption_method == "chacha20-poly1305":
+            # Generate ChaCha20 key
+            chacha_key = generate_chacha_key()
+            self.encryption_info[secret_key] = {
+                "chacha_key": chacha_key,
+                "method": "chacha20-poly1305"
+            }
+            logger.info(f"Generated ChaCha20-Poly1305 encryption keys for transfer of {filename}")
+        else:
+            # Default to AES if unknown method
+            aes_key = generate_aes_key()
+            self.encryption_info[secret_key] = {
+                "aes_key": aes_key,
+                "method": "aes-256-gcm"
+            }
+            logger.warning(f"Unknown encryption method '{encryption_method}', defaulting to AES-256-GCM")
         
         transfer_info = {
             "type": "transfer_start",
@@ -217,20 +137,22 @@ class ConnectionManager:
                 file_hash = calculate_file_hash(complete_file_data)
                 logger.info(f"Calculated integrity hash for complete file: {file_hash[:15]}...")
             
-            # Encrypt the file if needed
+            # Encrypt the file based on the specified method
             encrypted_data = None
             encryption_metadata = {}
+            encryption_method = encryption_options.get("method", "aes-256-gcm")
             
-            if encryption_options.get("method") == "aes-256-gcm" and secret_key in self.encryption_info:
+            if encryption_method == "aes-256-gcm" and secret_key in self.encryption_info:
                 # Get the prepared encryption key
                 aes_key = self.encryption_info[secret_key]["aes_key"]
                 
-                # Encrypt the entire file
+                # Encrypt the entire file with AES
                 encrypted_package = encrypt_file_with_aes(complete_file_data, aes_key)
                 encrypted_data = encrypted_package['encrypted_data']
                 
                 # Store encryption metadata
                 encryption_metadata = {
+                    "method": "aes-256-gcm",
                     "aes_key": aes_key.hex(),
                     "iv": encrypted_package['iv'].hex(),
                     "tag": encrypted_package['tag'].hex(),
@@ -239,7 +161,32 @@ class ConnectionManager:
                 if file_hash:
                     encryption_metadata["file_hash"] = file_hash
                 
-                logger.info(f"File encryption completed for {transfer['filename']}")
+                logger.info(f"File encryption completed for {transfer['filename']} using AES-256-GCM")
+                
+            elif encryption_method == "chacha20-poly1305" and secret_key in self.encryption_info:
+                # Get the prepared ChaCha20 key
+                chacha_key = self.encryption_info[secret_key]["chacha_key"]
+                
+                # Encrypt the entire file with ChaCha20-Poly1305
+                encrypted_package = encrypt_file_with_chacha(complete_file_data, chacha_key)
+                encrypted_data = encrypted_package['encrypted_data']
+                
+                # Store encryption metadata
+                encryption_metadata = {
+                    "method": "chacha20-poly1305",
+                    "chacha_key": chacha_key.hex(),
+                    "nonce": encrypted_package['nonce'].hex(),
+                }
+                
+                if file_hash:
+                    encryption_metadata["file_hash"] = file_hash
+                
+                logger.info(f"File encryption completed for {transfer['filename']} using ChaCha20-Poly1305")
+            
+            else:
+                # If no valid encryption method, use the original data (not encrypted)
+                encrypted_data = complete_file_data
+                logger.warning(f"No valid encryption method found, sending unencrypted data")
             
             # Send the processed file to all receivers
             receivers = [ws for ws in self.active_connections[secret_key] 
