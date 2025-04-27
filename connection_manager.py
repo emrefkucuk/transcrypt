@@ -32,8 +32,118 @@ class ConnectionManager:
         self.encryption_info: Dict[str, Dict] = {}
         # Store room settings
         self.room_settings: Dict[str, Dict] = {}
+    
+    def register_room_settings(self, secret_key: str, settings: Dict[str, Any]) -> None:
+        """Register settings for a room."""
+        if secret_key not in self.room_settings:
+            self.room_settings[secret_key] = {}
         
-    # [... other methods unchanged ...]
+        # Update room settings with the new values
+        self.room_settings[secret_key].update(settings)
+        logger.info(f"Registered room settings for {secret_key[:8]}...")
+
+    async def connect(self, websocket: WebSocket, secret_key: str, role: str) -> bool:
+        """Connect a client to the room."""
+        await websocket.accept()
+        
+        # Initialize the set of connections for this secret key if needed
+        if secret_key not in self.active_connections:
+            self.active_connections[secret_key] = set()
+        
+        # Check if we have room settings and enforce max_receivers if needed
+        if role == "receiver" and secret_key in self.room_settings:
+            max_receivers = self.room_settings[secret_key].get("max_receivers", 0)
+            if max_receivers > 0:
+                # Count existing receivers
+                current_receivers = sum(1 for ws in self.active_connections[secret_key] 
+                                     if self.connection_info.get(ws, {}).get("role") == "receiver")
+                
+                # Check if we've reached the limit
+                if current_receivers >= max_receivers:
+                    await websocket.send_json({
+                        "type": "error", 
+                        "message": f"Maximum number of receivers ({max_receivers}) already reached"
+                    })
+                    await websocket.close(code=1008, reason="Maximum receivers reached")
+                    return False
+        
+        # Add the connection
+        self.active_connections[secret_key].add(websocket)
+        self.connection_info[websocket] = {"role": role, "secret_key": secret_key}
+        
+        # Send welcome message to the new connection
+        await websocket.send_json({
+            "type": "connected",
+            "role": role,
+            "message": f"Connected as {role}"
+        })
+        
+        # Notify others about the new connection
+        client_count = len(self.active_connections[secret_key])
+        logger.info(f"Client connected to room {secret_key[:8]}... as {role}. Total clients: {client_count}")
+        
+        # Broadcast updated participant counts
+        await self.broadcast_room_status(secret_key)
+        
+        return True
+        
+    async def disconnect(self, websocket: WebSocket) -> None:
+        """Disconnect a client from the room."""
+        if websocket not in self.connection_info:
+            return
+            
+        info = self.connection_info[websocket]
+        secret_key = info["secret_key"]
+        role = info["role"]
+        
+        # Remove the connection
+        if secret_key in self.active_connections:
+            self.active_connections[secret_key].discard(websocket)
+            
+            # If no connections left in the room, clean up
+            if not self.active_connections[secret_key]:
+                self.active_connections.pop(secret_key, None)
+                self.active_transfers.pop(secret_key, None)
+                self.file_chunks.pop(secret_key, None)
+                self.encryption_info.pop(secret_key, None)
+                logger.info(f"Room {secret_key[:8]}... closed as last client disconnected")
+            else:
+                # Broadcast updated participant counts
+                await self.broadcast_room_status(secret_key)
+                logger.info(f"Client disconnected from room {secret_key[:8]}... as {role}")
+        
+        # Remove connection info
+        self.connection_info.pop(websocket, None)
+    
+    async def broadcast_room_status(self, secret_key: str) -> None:
+        """Broadcast room status to all connected clients."""
+        if secret_key not in self.active_connections:
+            return
+            
+        # Count participants by role
+        senders = 0
+        receivers = 0
+        for ws in self.active_connections[secret_key]:
+            info = self.connection_info.get(ws, {})
+            if info.get("role") == "sender":
+                senders += 1
+            elif info.get("role") == "receiver":
+                receivers += 1
+        
+        # Get room settings
+        room_settings = self.room_settings.get(secret_key, {})
+        max_receivers = room_settings.get("max_receivers", 0)
+        
+        # Create room status message
+        status_message = {
+            "type": "room_status",
+            "senders": senders,
+            "receivers": receivers,
+            "max_receivers": max_receivers
+        }
+        
+        # Broadcast to all in the room
+        await self.broadcast(self.active_connections[secret_key], status_message)
 
     async def start_file_transfer(self, websocket: WebSocket, filename: str, filesize: int, encryption_options=None):
         if websocket not in self.connection_info:

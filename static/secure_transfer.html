@@ -169,7 +169,12 @@
                             </div>
                             <div class="mb-3">
                                 <label for="appPassword" class="form-label">App Password:</label>
-                                <input type="password" class="form-control" id="appPassword">
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="appPassword">
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
                                 <div class="form-text">
                                     Create an <a href="https://myaccount.google.com/apppasswords" target="_blank">app password</a> for transfer
                                 </div>
@@ -451,6 +456,7 @@
                                 <label for="encryptionMethod" class="form-label">Encryption Metodu:</label>
                                 <select class="form-select" id="encryptionMethod">
                                     <option value="aes-256-gcm">AES-256-GCM (Default)</option>
+                                    <option value="chacha20-poly1305">ChaCha20-Poly1305</option>
                                     <option value="none">No Encryption</option>
                                 </select>
                             </div>

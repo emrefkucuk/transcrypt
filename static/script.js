@@ -19,8 +19,33 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // If key parameter exists, automatically join the room
     if (keyParam) {
-        console.log('Key parameter detected:', keyParam);
         autoJoinWithKey(keyParam);
+    }
+    
+    // Make Direct option selected by default when create room page is displayed
+    document.getElementById('directOption').checked = true;
+    selectKeyOption('direct');
+    
+    // Load available models
+    loadAvailableModels();
+
+    // Password visibility toggle
+    const togglePassword = document.getElementById('togglePassword');
+    const appPassword = document.getElementById('appPassword');
+    
+    if (togglePassword && appPassword) {
+        togglePassword.addEventListener('click', function() {
+            // Toggle password visibility
+            if (appPassword.type === 'password') {
+                appPassword.type = 'text';
+                togglePassword.innerHTML = '<i class="bi bi-eye-slash"></i>';
+                togglePassword.setAttribute('title', 'Hide password');
+            } else {
+                appPassword.type = 'password';
+                togglePassword.innerHTML = '<i class="bi bi-eye"></i>';
+                togglePassword.setAttribute('title', 'Show password');
+            }
+        });
     }
 });
 
@@ -36,11 +61,10 @@ async function autoJoinWithKey(secretKey) {
             currentSecretKey = secretKey;
             setupAsReceiver();
         } else {
-            alert('Invalid secret key or nonexistent room.');
+            showNotification('Invalid secret key or nonexistent room.', 'danger');
         }
     } catch (error) {
-        console.error('Error joining room:', error);
-        alert('An error occured while joining room.');
+        showNotification('An error occurred while joining room.', 'danger');
     }
 }
 
@@ -56,6 +80,9 @@ function showJoinRoomOptions() {
 }
 
 function goBack() {
+    // Form alanlarını sıfırla
+    resetAllForms();
+
     // Hide all cards except initial options
     document.getElementById('createRoomOptions').style.display = 'none';
     document.getElementById('joinRoomOptions').style.display = 'none';
@@ -107,6 +134,144 @@ function selectKeyOption(option) {
     }
 }
 
+// Show custom alert/notification
+function showNotification(message, type = 'info') {
+    // Create the notification element if it doesn't exist yet
+    let notificationContainer = document.getElementById('notificationContainer');
+    if (!notificationContainer) {
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notificationContainer';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.top = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '9999';
+        notificationContainer.style.maxWidth = '350px';
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // Create the notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show`;
+    notification.style.marginBottom = '10px';
+    notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    
+    // Add icon based on type
+    let icon = '';
+    switch (type) {
+        case 'success': icon = '<i class="bi bi-check-circle-fill me-2"></i>'; break;
+        case 'danger': icon = '<i class="bi bi-exclamation-triangle-fill me-2"></i>'; break;
+        case 'warning': icon = '<i class="bi bi-exclamation-circle-fill me-2"></i>'; break;
+        case 'info': 
+        default: icon = '<i class="bi bi-info-circle-fill me-2"></i>'; break;
+    }
+    
+    notification.innerHTML = `
+        ${icon} ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // Add the notification to the container
+    notificationContainer.appendChild(notification);
+    
+    // Initialize Bootstrap alert
+    const bsAlert = new bootstrap.Alert(notification);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        try {
+            bsAlert.close();
+            // Remove from DOM after animation completes
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        } catch (e) {
+            // Just in case the element was already removed
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+        }
+    }, 5000);
+}
+
+// Reset all form fields and settings
+function resetAllForms() {
+    // Reset create room form fields
+    if (document.getElementById('stegoPrompt')) {
+        document.getElementById('stegoPrompt').value = '';
+    }
+    
+    if (document.getElementById('regeneratePrompt')) {
+        document.getElementById('regeneratePrompt').value = '';
+    }
+
+    // Reset file inputs (checking if they exist first)
+    const fileInputs = ['stegoImage', 'stegoImageUpload', 'fileInput'];
+    fileInputs.forEach(id => {
+        const input = document.getElementById(id);
+        if (input && input.value) {
+            input.value = '';
+        }
+    });
+    
+    // Reset email fields
+    const textFields = ['senderEmail', 'appPassword', 'receiverEmail', 'secretKey', 'encryptedMessage'];
+    textFields.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) {
+            field.value = '';
+        }
+    });
+    
+    // Reset dropdown selections
+    if (document.getElementById('encryptionMethod')) {
+        document.getElementById('encryptionMethod').selectedIndex = 0;
+    }
+    
+    // Reset checkboxes
+    if (document.getElementById('integrityCheck')) {
+        document.getElementById('integrityCheck').checked = true;
+    }
+
+    // Reset number input
+    if (document.getElementById('maxReceivers')) {
+        document.getElementById('maxReceivers').value = '0';
+    }
+    
+    // Set Direct option as selected by default
+    if (document.getElementById('directOption')) {
+        document.getElementById('directOption').checked = true;
+        document.querySelectorAll('.option-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        const directCard = document.querySelector('.card.option-card[onclick="selectKeyOption(\'direct\')"]');
+        if (directCard) {
+            directCard.classList.add('selected');
+        }
+    }
+    
+    // Hide conditional containers
+    const containers = ['stegoPromptContainer', 'imageUploadContainer', 'emailSetupContainer'];
+    containers.forEach(id => {
+        const container = document.getElementById(id);
+        if (container) {
+            container.style.display = 'none';
+        }
+    });
+
+    // Reset room tabs to first tab
+    const directTab = document.getElementById('direct-tab');
+    if (directTab) {
+        try {
+            const tab = new bootstrap.Tab(directTab);
+            tab.show();
+        } catch (e) {
+            // Handle any errors silently
+        }
+    }
+}
+
 // Create room function
 async function createRoom() {
     const useSteganography = document.getElementById('stegoOption').checked;
@@ -127,7 +292,7 @@ async function createRoom() {
             const imageFile = imageInput.files[0];
             
             if (!imageFile) {
-                alert('Please choose an image');
+                showNotification('Please choose an image', 'warning');
                 document.getElementById('generatingIndicator').classList.remove('show');
                 document.getElementById('createRoomBtn').disabled = false;
                 return;
@@ -135,7 +300,7 @@ async function createRoom() {
             
             // Check if the file is an image
             if (!imageFile.type.startsWith('image/')) {
-                alert('Please choose a valid image!');
+                showNotification('Please choose a valid image!', 'warning');
                 document.getElementById('generatingIndicator').classList.remove('show');
                 document.getElementById('createRoomBtn').disabled = false;
                 return;
@@ -169,7 +334,7 @@ async function createRoom() {
                 document.getElementById('createRoomOptions').style.display = 'none';
                 document.getElementById('roomCreatedImage').style.display = 'block';
             } else {
-                alert('Room creation failed: ' + data.message);
+                showNotification('Room creation failed: ' + data.message, 'danger');
             }
         } else if (useSteganography) {
             // Get prompt if provided
@@ -203,7 +368,7 @@ async function createRoom() {
                 document.getElementById('createRoomOptions').style.display = 'none';
                 document.getElementById('roomCreatedStego').style.display = 'block';
             } else {
-                alert('Room creation failed: ' + data.message);
+                showNotification('Room creation failed: ' + data.message, 'danger');
             }
         } else if (useEmail) {
             // Get email details
@@ -212,7 +377,7 @@ async function createRoom() {
             const receiverEmail = document.getElementById('receiverEmail').value.trim();
             
             if (!senderEmail || !appPassword || !receiverEmail) {
-                alert('Please fill all fields.');
+                showNotification('Please fill all fields.', 'warning');
                 document.getElementById('generatingIndicator').classList.remove('show');
                 document.getElementById('createRoomBtn').disabled = false;
                 return;
@@ -248,7 +413,7 @@ async function createRoom() {
                 document.getElementById('createRoomOptions').style.display = 'none';
                 document.getElementById('roomCreatedEmail').style.display = 'block';
             } else {
-                alert('Room creation failed: ' + data.message);
+                showNotification('Room creation failed: ' + data.message, 'danger');
             }
         } else {
             // Create direct key room
@@ -276,14 +441,13 @@ async function createRoom() {
                 document.getElementById('createRoomOptions').style.display = 'none';
                 document.getElementById('roomCreatedDirect').style.display = 'block';
             } else {
-                alert('Room creation failed: ' + data.message);
+                showNotification('Room creation failed: ' + data.message, 'danger');
             }
         }
     } catch (error) {
-        console.error('Error creating room:', error);
         document.getElementById('generatingIndicator').classList.remove('show');
         document.getElementById('createRoomBtn').disabled = false;
-        alert('An error occured during room creation.');
+        showNotification('An error occurred during room creation.', 'danger');
     }
 }
 
@@ -292,7 +456,7 @@ async function joinRoomWithKey() {
     const secretKey = document.getElementById('secretKey').value.trim();
     
     if (!secretKey) {
-        alert('Please enter a Secret Key');
+        showNotification('Please enter a Secret Key', 'warning');
         return;
     }
     
@@ -304,11 +468,10 @@ async function joinRoomWithKey() {
             currentSecretKey = secretKey;
             setupAsReceiver();
         } else {
-            alert('Invalid secret key or nonexistent room.');
+            showNotification('Invalid secret key or nonexistent room.', 'danger');
         }
     } catch (error) {
-        console.error('Error joining room:', error);
-        alert('An error occured while joining a room.');
+        showNotification('An error occurred while joining a room.', 'danger');
     }
 }
 
@@ -317,7 +480,7 @@ async function extractKeyAndJoin() {
     const encryptedText = document.getElementById('encryptedMessage').value.trim();
     
     if (!encryptedText) {
-        alert('Please enter encrypted message');
+        showNotification('Please enter encrypted message', 'warning');
         return;
     }
     
@@ -338,11 +501,10 @@ async function extractKeyAndJoin() {
             currentSecretKey = data.secret_key;
             setupAsReceiver();
         } else {
-            alert('Secret key could not be extracted: ' + data.message);
+            showNotification('Secret key could not be extracted: ' + data.message, 'danger');
         }
     } catch (error) {
-        console.error('Error extracting key:', error);
-        alert('An error occured while extracting key');
+        showNotification('An error occurred while extracting key', 'danger');
     }
 }
 
@@ -351,7 +513,7 @@ async function extractKeyFromImageAndJoin() {
     const imageInput = document.getElementById('stegoImageUpload');
     
     if (!imageInput.files || imageInput.files.length === 0) {
-        alert('Please choose image');
+        showNotification('Please choose image', 'warning');
         return;
     }
     
@@ -376,13 +538,12 @@ async function extractKeyFromImageAndJoin() {
             currentSecretKey = data.secret_key;
             setupAsReceiver();
         } else {
-            alert('Secret key could not be extracted: ' + data.message);
+            showNotification('Secret key could not be extracted: ' + data.message, 'danger');
         }
     } catch (error) {
         // Reset loading
         document.getElementById('image-tab').textContent = 'Upload Image';
-        console.error('Error extracting key from image:', error);
-        alert('An error occured during secret key extraction.');
+        showNotification('An error occurred during secret key extraction.', 'danger');
     }
 }
 
@@ -472,7 +633,6 @@ function connectWebSocket(role) {
     };
     
     wsConnection.onerror = (error) => {
-        console.error('WebSocket error:', error);
         connectionStatus.textContent = 'Connnection error';
         addLogEntry('Connnection error', 'error');
     };
@@ -488,7 +648,11 @@ function handleWebSocketMessage(event) {
             
             switch (data.type) {
                 case 'status':
+                case 'room_status':  // Add support for the correct message type
                     updateRoomStatus(data);
+                    break;
+                case 'connected':
+                    // When connected message is received, log it
                     break;
                 case 'transfer_start':
                     handleTransferStart(data);
@@ -509,7 +673,7 @@ function handleWebSocketMessage(event) {
             addLogEntry('File received, processing...', 'info');
         }
     } catch (error) {
-        console.error('Error processing WebSocket message:', error);
+        addLogEntry('Error processing WebSocket message', 'error');
     }
 }
 
@@ -580,6 +744,9 @@ function handleTransferStart(data) {
             if (data.encryptionOptions.method === 'aes-256-gcm') {
                 methodText += 'AES-256-GCM';
                 addLogEntry('File is encrypted with AES-256-GCM', 'info');
+            } else if (data.encryptionOptions.method === 'chacha20-poly1305') {
+                methodText += 'ChaCha20-Poly1305';
+                addLogEntry('File is encrypted with ChaCha20-Poly1305', 'info');
             } else {
                 methodText += 'No Encryption';
                 addLogEntry('File sending without encryption', 'info');
@@ -632,8 +799,23 @@ function handleTransferComplete(data) {
         receivedFileName = data.filename;
         
         // Process the received file if it's encrypted
-        if (encryptionMetadata && encryptionMetadata.aes_key) {
-            processEncryptedFile();
+        if (encryptionMetadata && encryptionMetadata.method) {
+            // Check which encryption method is used
+            if (encryptionMetadata.method === 'aes-256-gcm' && encryptionMetadata.aes_key) {
+                // For AES-256-GCM
+                addLogEntry('Decrypting AES-256-GCM encrypted file', 'info');
+                processEncryptedFile();
+            } 
+            else if (encryptionMetadata.method === 'chacha20-poly1305' && encryptionMetadata.chacha_key) {
+                // For ChaCha20-Poly1305
+                addLogEntry('Decrypting ChaCha20-Poly1305 encrypted file', 'info');
+                processEncryptedFile();
+            }
+            else {
+                // If method is specified but keys missing, show warning
+                addLogEntry('Encryption method specified but decryption keys missing', 'warning');
+                document.getElementById('downloadBtnContainer').style.display = 'block';
+            }
         } else {
             // If not encrypted, show the download button
             document.getElementById('downloadBtnContainer').style.display = 'block';
@@ -667,33 +849,80 @@ async function processEncryptedFile() {
     }
     
     try {
-        addLogEntry('Decrypting file...', 'info');
-        
         // Read file as ArrayBuffer
         const fileData = await receivedFileBlob.arrayBuffer();
         
-        // Get encryption parameters
-        const aesKeyHex = encryptionMetadata.aes_key;
-        const ivHex = encryptionMetadata.iv;
-        const tagHex = encryptionMetadata.tag;
+        // Determine encryption method used
+        const method = encryptionMetadata.method || 'aes-256-gcm';
         
-        // Convert hex strings to Uint8Array
-        const aesKey = hexToUint8Array(aesKeyHex);
-        const iv = hexToUint8Array(ivHex);
-        const tag = hexToUint8Array(tagHex);
+        addLogEntry(`Decrypting file using ${method}...`, 'info');
         
-        // Decrypt the file using WebCrypto API
-        const decryptedData = await decryptFileWithAES(fileData, aesKey, iv, tag);
+        if (method === 'aes-256-gcm') {
+            // Get AES encryption parameters
+            const aesKeyHex = encryptionMetadata.aes_key;
+            const ivHex = encryptionMetadata.iv;
+            const tagHex = encryptionMetadata.tag;
+            
+            // Convert hex strings to Uint8Array
+            const aesKey = hexToUint8Array(aesKeyHex);
+            const iv = hexToUint8Array(ivHex);
+            const tag = hexToUint8Array(tagHex);
+            
+            // Decrypt the file using WebCrypto API
+            const decryptedData = await decryptFileWithAES(fileData, aesKey, iv, tag);
+            
+            // Create a blob from decrypted data
+            receivedFileBlob = new Blob([decryptedData]);
+            
+            addLogEntry('AES decryption completed successfully', 'success');
+        } 
+        else if (method === 'chacha20-poly1305') {
+            // Get ChaCha20-Poly1305 encryption parameters
+            const chachaKeyHex = encryptionMetadata.chacha_key;
+            const nonceHex = encryptionMetadata.nonce;
+            
+            if (!chachaKeyHex || !nonceHex) {
+                addLogEntry('Missing ChaCha20-Poly1305 parameters', 'error');
+                return;
+            }
+            
+            // For ChaCha20-Poly1305, we'll use server-side decryption
+            addLogEntry('Preparing ChaCha20-Poly1305 decryption via server...', 'info');
+            
+            // Create a FormData object to send to the server
+            const formData = new FormData();
+            formData.append('file', new Blob([fileData]), receivedFileName);
+            formData.append('chacha_key', chachaKeyHex);
+            formData.append('nonce', nonceHex);
+            
+            // Send to server for decryption
+            try {
+                const response = await fetch('/api/decrypt-chacha', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Server decryption failed: ${errorText}`);
+                }
+                
+                // Get the decrypted file from the server response
+                const decryptedBlob = await response.blob();
+                receivedFileBlob = decryptedBlob;
+                
+                addLogEntry('Server-side ChaCha20 decryption completed', 'success');
+            } catch (fetchError) {
+                addLogEntry(`Server decryption error: ${fetchError.message}`, 'error');
+                throw fetchError;
+            }
+        }
         
-        // Create a blob from decrypted data
-        receivedFileBlob = new Blob([decryptedData]);
-        
-        addLogEntry('Decryption successful!', 'success');
+        addLogEntry('Decryption processing finished', 'success');
         
         // Show download button
         document.getElementById('downloadBtnContainer').style.display = 'block';
     } catch (error) {
-        console.error('Decryption error:', error);
         addLogEntry('Error with decryption: ' + error.message, 'error');
     }
 }
@@ -744,8 +973,6 @@ async function decryptFileWithAES(encryptedData, aesKey, iv, tag) {
             );
             return decrypted;
         } catch (innerError) {
-            console.error("First approach failed, trying alternate approach:", innerError);
-            
             // Alternate approach - some implementations expect the tag separate from data
             // Try with just the encrypted data without the tag
             return await window.crypto.subtle.decrypt(
@@ -755,7 +982,6 @@ async function decryptFileWithAES(encryptedData, aesKey, iv, tag) {
             );
         }
     } catch (error) {
-        console.error("Decryption error:", error);
         throw new Error("Decryption failed: " + error.message);
     }
 }
@@ -793,7 +1019,7 @@ function checkFileInputState() {
 // Send file through WebSocket
 function sendFile() {
     if (!selectedFile || !wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
-        alert('File not selected or connection could not be established');
+        showNotification('File not selected or connection could not be established', 'danger');
         return;
     }
 
@@ -802,6 +1028,10 @@ function sendFile() {
         method: document.getElementById('encryptionMethod').value,
         integrityCheck: document.getElementById('integrityCheck').checked
     };
+
+    // Store the file for sender's download capability
+    receivedFileBlob = selectedFile;
+    receivedFileName = selectedFile.name;
 
     // Show progress UI
     document.getElementById('transferProgress').style.display = 'block';
@@ -812,13 +1042,15 @@ function sendFile() {
     
     // Log encryption options
     if (encryptionOptions.method === 'aes-256-gcm') {
-        addLogEntry('Dosya AES-256-GCM ile şifrelenecek', 'info');
+        addLogEntry('File will be encrypted with AES-256-GCM', 'info');
+    } else if (encryptionOptions.method === 'chacha20-poly1305') {
+        addLogEntry('File will be encrypted with ChaCha20-Poly1305', 'info');
     } else {
-        addLogEntry('Dosya şifrelemesiz gönderilecek', 'info');
+        addLogEntry('File will be sent without encryption', 'warning');
     }
     
     if (encryptionOptions.integrityCheck) {
-        addLogEntry('SHA-256 bütünlük doğrulaması aktif', 'info');
+        addLogEntry('SHA-256 integrity validation active', 'info');
     }
 
     // Send file metadata
@@ -846,12 +1078,6 @@ function sendFile() {
                 chunk_id: chunkId,
                 total_chunks: totalChunks
             }));
-            
-            if (chunkId === 0) {
-                addLogEntry('First file chunk sent', 'info');
-            } else if (chunkId === totalChunks - 1) {
-                addLogEntry('Last file chunk sent', 'info');
-            }
             
             chunkId++;
             
@@ -887,7 +1113,11 @@ function downloadFile() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    
+    // Wait a moment before revoking the URL
+    setTimeout(() => {
+        URL.revokeObjectURL(url);
+    }, 1000);
     
     addLogEntry(`File is downloaded as "${receivedFileName}"`, 'success');
 }
@@ -916,8 +1146,18 @@ function leaveRoom() {
     document.getElementById('downloadBtnContainer').style.display = 'none';
     document.getElementById('encryptionInfo').style.display = 'none';
     
+    // Form alanlarını sıfırla
+    resetAllForms();
+    
     // Go back to initial view
-    goBack();
+    document.getElementById('createRoomOptions').style.display = 'none';
+    document.getElementById('joinRoomOptions').style.display = 'none';
+    document.getElementById('roomCreatedDirect').style.display = 'none';
+    document.getElementById('roomCreatedStego').style.display = 'none';
+    document.getElementById('roomCreatedImage').style.display = 'none';
+    document.getElementById('roomCreatedEmail').style.display = 'none';
+    document.getElementById('fileTransfer').style.display = 'none';
+    document.getElementById('initialOptions').style.display = 'block';
 }
 
 // Add log entry
@@ -944,20 +1184,18 @@ function copyToClipboard(elementId) {
     if (element.tagName === 'TEXTAREA') {
         navigator.clipboard.writeText(element.value)
             .then(() => {
-                alert('Text copied to clipboard!');
+                showNotification('Text copied to clipboard!', 'success');
             })
             .catch(err => {
-                console.error('Copy error:', err);
-                alert('Copying failed.');
+                showNotification('Copying failed.', 'danger');
             });
     } else {
         navigator.clipboard.writeText(element.textContent)
             .then(() => {
-                alert('Text copied to clipboard!');
+                showNotification('Text copied to clipboard!', 'success');
             })
             .catch(err => {
-                console.error('Copying failed.:', err);
-                alert('Copying failed..');
+                showNotification('Copying failed.', 'danger');
             });
     }
 }
@@ -965,7 +1203,7 @@ function copyToClipboard(elementId) {
 // Regenerate steganographic text
 async function regenerateStegoText() {
     if (!currentSecretKey) {
-        alert('Secret key not available');
+        showNotification('Secret key not available', 'danger');
         return;
     }
     
@@ -1000,15 +1238,14 @@ async function regenerateStegoText() {
         if (data.status === 'success') {
             // Update the displayed text
             document.getElementById('stegoMessage').value = data.invitation_text;
-            alert('Text successfully recreated!');
+            showNotification('Text successfully recreated!', 'success');
         } else {
-            alert('Text could not be recreated: ' + data.message);
+            showNotification('Text could not be recreated: ' + data.message, 'danger');
         }
     } catch (error) {
-        console.error('Error regenerating text:', error);
         document.getElementById('regeneratingIndicator').classList.remove('show');
         document.getElementById('regenerateBtn').disabled = false;
-        alert('An error occured during text recreation.');
+        showNotification('An error occurred during text recreation.', 'danger');
     }
 }
 
@@ -1037,7 +1274,7 @@ async function loadAvailableModels() {
             });
         }
     } catch (error) {
-        console.error('Error loading available models:', error);
+        // Handle error silently
     }
 }
 

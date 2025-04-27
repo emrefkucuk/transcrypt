@@ -22,7 +22,7 @@ def generate_aes_key(key_size: int = 32) -> bytes:
     Returns:
         Random bytes to be used as AES key
     """
-    return os.urandom(key_size)  # Uses secure random number generator
+    return os.urandom(key_size)
 
 
 def generate_rsa_key_pair(key_size: int = 2048) -> Tuple[bytes, bytes]:
@@ -37,7 +37,7 @@ def generate_rsa_key_pair(key_size: int = 2048) -> Tuple[bytes, bytes]:
     """
     # Generate a private key
     private_key = rsa.generate_private_key(
-        public_exponent=65537,  # Standard value for RSA public exponent
+        public_exponent=65537,
         key_size=key_size,
         backend=default_backend()
     )
@@ -71,13 +71,13 @@ def encrypt_aes_key_with_rsa(aes_key: bytes, public_key_pem: bytes) -> bytes:
     Returns:
         RSA-encrypted AES key
     """
-    # Load the public key from PEM format
+    # Load the public key
     public_key = serialization.load_pem_public_key(
         public_key_pem,
         backend=default_backend()
     )
     
-    # Encrypt the AES key with the RSA public key using OAEP padding with SHA256
+    # Encrypt the AES key with the RSA public key
     encrypted_key = public_key.encrypt(
         aes_key,
         padding.OAEP(
@@ -101,14 +101,14 @@ def decrypt_aes_key_with_rsa(encrypted_aes_key: bytes, private_key_pem: bytes) -
     Returns:
         Decrypted AES key
     """
-    # Load the private key from PEM format
+    # Load the private key
     private_key = serialization.load_pem_private_key(
         private_key_pem,
-        password=None,  # No password protection for this example
+        password=None,
         backend=default_backend()
     )
     
-    # Decrypt the AES key using the same padding scheme as encryption
+    # Decrypt the AES key
     decrypted_key = private_key.decrypt(
         encrypted_aes_key,
         padding.OAEP(
@@ -163,11 +163,9 @@ def encrypt_file_with_aes(file_data: bytes, aes_key: bytes) -> Dict[str, bytes]:
         Dictionary containing encrypted data, iv (initialization vector), and tag
     """
     # Generate a random initialization vector
-    # 96 bits (12 bytes) is the recommended IV length for GCM mode
-    iv = os.urandom(12)
+    iv = os.urandom(12)  # 96 bits for GCM mode
     
-    # Create an encryptor object with AES-GCM mode
-    # GCM mode provides both confidentiality and authenticity
+    # Create an encryptor object
     encryptor = Cipher(
         algorithms.AES(aes_key),
         modes.GCM(iv),
@@ -177,11 +175,10 @@ def encrypt_file_with_aes(file_data: bytes, aes_key: bytes) -> Dict[str, bytes]:
     # Encrypt the file data
     encrypted_data = encryptor.update(file_data) + encryptor.finalize()
     
-    # Return a dictionary with all components needed for decryption
     return {
         'encrypted_data': encrypted_data,
         'iv': iv,
-        'tag': encryptor.tag  # Authentication tag for GCM mode to verify integrity
+        'tag': encryptor.tag  # Authentication tag for GCM mode
     }
 
 
@@ -201,8 +198,7 @@ def decrypt_file_with_aes(encrypted_package: Dict[str, bytes], aes_key: bytes) -
     iv = encrypted_package['iv']
     tag = encrypted_package['tag']
     
-    # Create a decryptor object with the same parameters
-    # The tag is provided for authentication - an exception will be raised if tampering is detected
+    # Create a decryptor object
     decryptor = Cipher(
         algorithms.AES(aes_key),
         modes.GCM(iv, tag),
@@ -295,23 +291,19 @@ def process_file_for_sending(file_data: bytes, receiver_public_key: bytes) -> Di
     # Calculate original hash for integrity checking
     original_hash = calculate_file_hash(file_data)
     
-    # Generate a random AES key for symmetric encryption
-    # AES is used for file encryption because it's much faster than RSA for large data
+    # Generate a random AES key
     aes_key = generate_aes_key()
     
     # Encrypt the file with the AES key
     encrypted_package = encrypt_file_with_aes(file_data, aes_key)
     
     # Encrypt the AES key with the receiver's public RSA key
-    # This is the hybrid cryptosystem approach: 
-    # - AES for the large file data (symmetric)
-    # - RSA for the small AES key (asymmetric)
     encrypted_aes_key = encrypt_aes_key_with_rsa(
         aes_key, 
         receiver_public_key
     )
     
-    # Prepare the transfer package with all required components
+    # Prepare the transfer package
     transfer_package = {
         'encrypted_data': encrypted_package['encrypted_data'],
         'iv': encrypted_package['iv'],
@@ -344,7 +336,7 @@ def process_received_file(transfer_package: Dict[str, Any], private_key: bytes) 
     encrypted_aes_key = transfer_package['encrypted_aes_key']
     original_hash = transfer_package['original_hash']
     
-    # Recreate the encrypted package for the decryption function
+    # Recreate the encrypted package
     encrypted_package = {
         'encrypted_data': encrypted_data,
         'iv': iv,
@@ -352,14 +344,12 @@ def process_received_file(transfer_package: Dict[str, Any], private_key: bytes) 
     }
     
     # Decrypt the AES key with the private RSA key
-    # Only the owner of the private key can decrypt this
     aes_key = decrypt_aes_key_with_rsa(encrypted_aes_key, private_key)
     
-    # Decrypt the file with the now-decrypted AES key
+    # Decrypt the file with the AES key
     decrypted_data = decrypt_file_with_aes(encrypted_package, aes_key)
     
-    # Verify file integrity using the original hash
-    # This ensures the file wasn't corrupted during transfer
+    # Verify file integrity
     is_intact = verify_file_integrity(decrypted_data, original_hash)
     
     return {

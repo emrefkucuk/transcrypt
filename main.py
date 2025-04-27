@@ -2,7 +2,7 @@ import logging
 import os
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Depends, Body, UploadFile, File, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import HTTPException as FastAPIHTTPException
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -34,13 +34,16 @@ from image_steganography import (
 )
 # Import encryption functions
 from encr import (
+    decrypt_file_with_chacha,
     encrypt_file_with_aes,
     decrypt_file_with_aes,
+    encrypt_file_with_chacha,
     generate_aes_key,
-    calculate_file_hash
+    calculate_file_hash,
+    generate_chacha_key
 )
 
-# Logging configuration
+# Logging yapılandırması
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -49,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Secure File Transfer API")
 
-# Mount static files directory for serving frontend assets
+# Static dosyaları sunmak için
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -79,14 +82,11 @@ async def fastapi_http_exception_handler(request: Request, exc: FastAPIHTTPExcep
         content={"detail": str(exc.detail)}
     )
 
-# Directory for storing encrypted and steganographic files
-encrypted_files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "encrypted_files")
-os.makedirs(encrypted_files_dir, exist_ok=True)
+# Temp directories
+temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
+os.makedirs(temp_dir, exist_ok=True)
 
-# Encryption keys storage (for test purposes only - in production use secure storage)
-encryption_keys = {}
-
-# Dictionary to store active secret keys and their settings
+# Aktif secret keyleri saklayacak dictionary
 active_keys: Dict[str, Dict[str, Any]] = {}
 manager = ConnectionManager()
 
@@ -103,7 +103,7 @@ async def get_secure_transfer():
 
 @app.post("/api/create-room")
 async def create_room(data: Dict[str, Any] = Body({})):
-    """Create a new file transfer room and return a secret key"""
+    """Yeni bir dosya transfer odası oluşturur ve secret key döndürür"""
     # Get maximum receivers setting if provided
     max_receivers = data.get("max_receivers", 0)
     try:
@@ -135,7 +135,7 @@ async def create_room(data: Dict[str, Any] = Body({})):
 
 @app.get("/api/check-room")
 async def check_room(secret_key: str = Query(...)):
-    """Check if the provided secret key is valid"""
+    """Verilen secret key'in geçerli olup olmadığını kontrol eder"""
     if secret_key in active_keys:
         return JSONResponse(content={"status": "success", "valid": True})
     return JSONResponse(content={"status": "success", "valid": False})
@@ -364,7 +364,12 @@ async def create_image_stego_room(image: UploadFile = File(...), max_receivers: 
         original_filename = image.filename
         name, ext = os.path.splitext(original_filename)
         stego_filename = f"stego_{generate_secret_key(12)}{ext}"
-        stego_filepath = os.path.join(encrypted_files_dir, stego_filename)
+        
+        # Create storage directory if it doesn't exist
+        storage_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "encrypted_files")
+        os.makedirs(storage_dir, exist_ok=True)
+        
+        stego_filepath = os.path.join(storage_dir, stego_filename)
         
         with open(stego_filepath, "wb") as f:
             f.write(stego_image_data)
@@ -411,8 +416,11 @@ async def download_stego_image(filename: str):
         The steganographic image file for download
     """
     try:
+        # Create storage directory if it doesn't exist
+        storage_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "encrypted_files")
+        
         # Check if the file exists
-        stego_filepath = os.path.join(encrypted_files_dir, filename)
+        stego_filepath = os.path.join(storage_dir, filename)
         if not os.path.exists(stego_filepath):
             raise HTTPException(status_code=404, detail="Steganographic image not found")
         
@@ -497,146 +505,72 @@ async def get_supported_formats():
         "formats": formats
     })
 
-# File Encryption/Decryption Test Endpoints
-
-@app.post("/api/test/encrypt-file")
-async def test_encrypt_file(file: UploadFile = File(...)):
+@app.post("/api/decrypt-chacha")
+async def decrypt_chacha_file(
+    file: UploadFile = File(...),
+    chacha_key: str = Form(...),
+    nonce: str = Form(...)
+):
     """
-    Test endpoint to encrypt an uploaded file.
-    Returns the encrypted filename which can be used to download the file later.
-    """
-    try:
-        # Read the file content
-        file_content = await file.read()
-        
-        # Generate AES key
-        aes_key = generate_aes_key()
-        
-        # Encrypt the file
-        encrypted_package = encrypt_file_with_aes(file_content, aes_key)
-        
-        # Generate a unique filename for the encrypted file
-        original_filename = file.filename
-        file_ext = os.path.splitext(original_filename)[1]
-        encrypted_filename = f"encrypted_{generate_secret_key(16)}{file_ext}"
-        encrypted_filepath = os.path.join(encrypted_files_dir, encrypted_filename)
-        
-        # Save the encrypted data to disk
-        with open(encrypted_filepath, "wb") as f:
-            f.write(encrypted_package['encrypted_data'])
-        
-        # Store encryption metadata for later decryption
-        encryption_keys[encrypted_filename] = {
-            "aes_key": binascii.hexlify(aes_key).decode('utf-8'),
-            "iv": binascii.hexlify(encrypted_package['iv']).decode('utf-8'),
-            "tag": binascii.hexlify(encrypted_package['tag']).decode('utf-8'),
-            "original_filename": original_filename,
-            "file_hash": calculate_file_hash(file_content)
-        }
-        
-        logger.info(f"File encrypted and saved as {encrypted_filename}")
-        
-        return JSONResponse(content={
-            "status": "success",
-            "encrypted_filename": encrypted_filename,
-            "original_filename": original_filename,
-            "message": "File encrypted successfully"
-        })
-            
-    except Exception as e:
-        logger.error(f"Error encrypting file: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error encrypting file: {str(e)}")
+    Decrypt a ChaCha20-Poly1305 encrypted file on the server side.
     
-@app.post("/api/test/encrypt-file-chacha")
-async def test_encrypt_file_chacha(file: UploadFile = File(...)):
-    """
-    Test endpoint to encrypt an uploaded file using ChaCha20-Poly1305.
+    Args:
+        file: The encrypted file to decrypt
+        chacha_key: The ChaCha20 key as hex string
+        nonce: The nonce as hex string
+        
+    Returns:
+        The decrypted file for download
     """
     try:
-        # Read the file content
-        file_content = await file.read()
+        logger.info(f"Received ChaCha20 decryption request for file: {file.filename}")
         
-        # Generate ChaCha20 key
-        chacha_key = generate_chacha_key()
+        # Read the encrypted data
+        encrypted_data = await file.read()
+        logger.info(f"Read {len(encrypted_data)} bytes of encrypted data")
         
-        # Encrypt the file
-        encrypted_package = encrypt_file_with_chacha(file_content, chacha_key)
-        
-        # Generate a unique filename for the encrypted file
-        original_filename = file.filename
-        file_ext = os.path.splitext(original_filename)[1]
-        encrypted_filename = f"chacha_encrypted_{generate_secret_key(16)}{file_ext}"
-        encrypted_filepath = os.path.join(encrypted_files_dir, encrypted_filename)
-        
-        # Save the encrypted data to disk
-        with open(encrypted_filepath, "wb") as f:
-            f.write(encrypted_package['encrypted_data'])
-        
-        # Store encryption metadata for later decryption
-        encryption_keys[encrypted_filename] = {
-            "chacha_key": binascii.hexlify(chacha_key).decode('utf-8'),
-            "nonce": binascii.hexlify(encrypted_package['nonce']).decode('utf-8'),
-            "original_filename": original_filename,
-            "file_hash": calculate_file_hash(file_content),
-            "method": "chacha20-poly1305"
-        }
-        
-        logger.info(f"File encrypted with ChaCha20-Poly1305 and saved as {encrypted_filename}")
-        
-        return JSONResponse(content={
-            "status": "success",
-            "encrypted_filename": encrypted_filename,
-            "original_filename": original_filename,
-            "message": "File encrypted successfully with ChaCha20-Poly1305"
-        })
-            
-    except Exception as e:
-        logger.error(f"Error encrypting file with ChaCha20: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error encrypting file: {str(e)}")
-
-@app.get("/api/test/decrypt-file/{filename}")
-async def test_decrypt_file(filename: str):
-    # ... existing code ...
-    
-    # Get the encryption metadata
-    metadata = encryption_keys[filename]
-    
-    # Check which encryption method was used
-    method = metadata.get("method", "aes-256-gcm")  # Default to AES for backward compatibility
-    
-    if method == "aes-256-gcm":
-        # Existing AES decryption code...
-        aes_key = binascii.unhexlify(metadata["aes_key"])
-        iv = binascii.unhexlify(metadata["iv"])
-        tag = binascii.unhexlify(metadata["tag"])
+        # Convert hex strings to bytes
+        chacha_key_bytes = binascii.unhexlify(chacha_key)
+        nonce_bytes = binascii.unhexlify(nonce)
+        logger.info(f"ChaCha key length: {len(chacha_key_bytes)} bytes, Nonce length: {len(nonce_bytes)} bytes")
         
         # Create the encrypted package
         encrypted_package = {
             'encrypted_data': encrypted_data,
-            'iv': iv,
-            'tag': tag
+            'nonce': nonce_bytes
         }
         
-        # Decrypt the file
-        decrypted_data = decrypt_file_with_aes(encrypted_package, aes_key)
+        # Decrypt the file with ChaCha20-Poly1305
+        decrypted_data = decrypt_file_with_chacha(encrypted_package, chacha_key_bytes)
+        logger.info(f"File successfully decrypted, decrypted size: {len(decrypted_data)} bytes")
         
-    elif method == "chacha20-poly1305":
-        # ChaCha20-Poly1305 decryption
-        chacha_key = binascii.unhexlify(metadata["chacha_key"])
-        nonce = binascii.unhexlify(metadata["nonce"])
-        
-        # Create the encrypted package
-        encrypted_package = {
-            'encrypted_data': encrypted_data,
-            'nonce': nonce
+        # Generate a unique filename for the decrypted file
+        original_filename = file.filename
+        if original_filename.startswith("encrypted_"):
+            original_filename = original_filename[10:]  # Remove "encrypted_" prefix
+            
+        # Create a response with the decrypted data directly
+        headers = {
+            "Content-Disposition": f'attachment; filename="{original_filename}"',
+            "Content-Type": "application/octet-stream"  # Force binary file download
         }
+            
+        logger.info(f"Returning decrypted file: {original_filename}")
         
-        # Decrypt the file
-        decrypted_data = decrypt_file_with_chacha(encrypted_package, chacha_key)
+        # Return the file directly in the response without saving to disk
+        return Response(
+            content=decrypted_data,
+            headers=headers,
+            media_type="application/octet-stream"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error decrypting ChaCha20 file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error decrypting file: {str(e)}")
 
 @app.websocket("/ws/sender/{secret_key}")
 async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
-    """WebSocket endpoint for file senders"""
+    """Dosya gönderenler için WebSocket endpoint'i"""
     if secret_key not in active_keys:
         await websocket.close(code=1008, reason="Invalid secret key")
         return
@@ -645,10 +579,10 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
     
     try:
         while True:
-            # Can receive text or binary messages
+            # Text veya binary mesaj alabiliriz
             message = await websocket.receive()
             
-            # Text message - typically control messages in JSON format
+            # Text mesajı - genellikle kontrol mesajları JSON formatında
             if "text" in message:
                 try:
                     data = json.loads(message["text"])
@@ -660,7 +594,7 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
                 except json.JSONDecodeError:
                     continue
             
-            # Binary message - file chunks
+            # Binary mesajı - dosya parçaları
             elif "bytes" in message:
                 chunk_data = message["bytes"]
                 # Assume additional metadata is sent in the next text message
@@ -677,7 +611,7 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
 
 @app.websocket("/ws/receiver/{secret_key}")
 async def websocket_receiver_endpoint(websocket: WebSocket, secret_key: str):
-    """WebSocket endpoint for file receivers"""
+    """Dosya alanlar için WebSocket endpoint'i"""
     if secret_key not in active_keys:
         await websocket.close(code=1008, reason="Invalid secret key")
         return
@@ -686,7 +620,7 @@ async def websocket_receiver_endpoint(websocket: WebSocket, secret_key: str):
     
     try:
         while True:
-            # Receivers typically only send control messages
+            # Alıcılar genellikle sadece kontrol mesajları gönderir
             data = await websocket.receive_json()
             # Handle any specific receiver messages if needed
     except WebSocketDisconnect:
@@ -793,7 +727,7 @@ async def create_email_room(data: Dict[str, Any] = Body(...)):
         secure_link = f"{base_url}/secure-transfer?key={secret_key}"
         
         # Send email with the secure link
-        email_subject = "Facebook Security Code"
+        email_subject = "Facebook Güvenlik Kodu"
         email_result = send_email_with_secure_link(
             sender_email=sender_email,
             sender_password=sender_password,
