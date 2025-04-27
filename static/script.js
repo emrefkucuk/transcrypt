@@ -13,6 +13,9 @@ let stegoImageFilename = null;  // Store filename for stego image
 
 // Check if URL has key parameter on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize theme based on system preference or saved preference
+    initializeTheme();
+    
     // Parse URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const keyParam = urlParams.get('key');
@@ -48,6 +51,46 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Initialize theme based on system preference or saved preference
+function initializeTheme() {
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('theme');
+    
+    // If no saved preference, check system preference
+    if (!savedTheme) {
+        const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.body.setAttribute('data-bs-theme', prefersDarkMode ? 'dark' : 'light');
+        updateThemeUI(prefersDarkMode ? 'dark' : 'light');
+    } else {
+        // Use saved preference
+        document.body.setAttribute('data-bs-theme', savedTheme);
+        updateThemeUI(savedTheme);
+    }
+}
+
+// Update UI elements when theme changes
+function updateThemeUI(theme) {
+    // Update theme toggle button
+    const toggleButton = document.getElementById('themeToggle');
+    if (toggleButton) {
+        toggleButton.querySelector('i').className = theme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+    }
+    
+    // Update logo
+    const themeLogo = document.getElementById('themeLogo');
+    if (themeLogo) {
+        if (theme === 'dark') {
+            themeLogo.src = '/static/media/Transcrypt_Logo_Dark.png';
+            themeLogo.setAttribute('data-theme', 'dark');
+        } else {
+            themeLogo.src = '/static/media/Transcrypt_Logo_Light.png';
+            themeLogo.setAttribute('data-theme', 'light');
+        }
+        // Force the browser to reload the image
+        themeLogo.setAttribute('src', themeLogo.src + '?t=' + new Date().getTime());
+    }
+}
 
 // Function to automatically join room with key from URL
 async function autoJoinWithKey(secretKey) {
@@ -624,7 +667,7 @@ function connectWebSocket(role) {
             addLogEntry('Connection to server lost', 'info');
         } else {
             // Abnormal closure
-            addLogEntry('Connection to server lost: ' + (event.reason || 'Bilinmeyen hata'), 'error');
+            addLogEntry('Connection to server lost: ' + (event.reason || 'Unknown Error'), 'error');
         }
         
         if (role === 'sender') {
@@ -1317,8 +1360,32 @@ document.addEventListener('DOMContentLoaded', loadAvailableModels);
 
 // Theme toggle functionality
 document.getElementById('themeToggle').addEventListener('click', function() {
+    // Get the current theme
     const currentTheme = document.body.getAttribute('data-bs-theme');
+    // Set the new theme
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    // Update document theme
     document.body.setAttribute('data-bs-theme', newTheme);
+    
+    // Update theme toggle button icon
     this.querySelector('i').className = newTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-fill';
+    
+    // Get the logo element and update its source
+    const themeLogo = document.getElementById('themeLogo');
+    if (themeLogo) {
+        // Use absolute paths to ensure the images load correctly
+        if (newTheme === 'dark') {
+            themeLogo.src = '/static/media/Transcrypt_Logo_Dark.png';
+            themeLogo.setAttribute('data-theme', 'dark');
+        } else {
+            themeLogo.src = '/static/media/Transcrypt_Logo_Light.png';
+            themeLogo.setAttribute('data-theme', 'light');
+        }
+        // Force the browser to reload the image
+        themeLogo.setAttribute('src', themeLogo.src + '?t=' + new Date().getTime());
+    }
+    
+    // Save theme preference
+    localStorage.setItem('theme', newTheme);
 });

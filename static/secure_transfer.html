@@ -6,7 +6,11 @@
     <title>Secure File Transfer System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="static\style.css">
+    <link rel="stylesheet" href="static/style.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="static/media/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="static/media/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="static/media/favicon-16x16.png">
+    <link rel="manifest" href="static/media/site.webmanifest">
 </head>
 <body>
     <!-- Theme Toggle Button -->
@@ -15,7 +19,9 @@
     </div>
     
     <div class="container">
-        <h1 class="text-center mb-4">Secure File Transfer</h1>
+        <div class="text-center mb-4">
+            <img src="static/media/Transcrypt_Logo_Light.png" alt="Transcrypt Logo" class="logo-image" id="themeLogo" data-theme="light">
+        </div>
 
         <!-- Initial Options Section -->
         <div id="initialOptions" class="card">
@@ -453,7 +459,7 @@
                         </div>
                         <div class="card-body">
                             <div class="mb-3">
-                                <label for="encryptionMethod" class="form-label">Encryption Metodu:</label>
+                                <label for="encryptionMethod" class="form-label">Encryption Method:</label>
                                 <select class="form-select" id="encryptionMethod">
                                     <option value="aes-256-gcm">AES-256-GCM (Default)</option>
                                     <option value="chacha20-poly1305">ChaCha20-Poly1305</option>

@@ -73,6 +73,16 @@ body {
     padding: 0 15px;
 }
 
+/* Transcrypt Logo styling */
+.logo-image {
+    max-width: 400px;
+    height: auto;
+    width: 95%;
+    margin: 0 auto 20px;
+    display: block;
+    transition: all 0.3s ease;
+}
+
 .card {
     border-radius: 10px;
     box-shadow: var(--card-shadow);
