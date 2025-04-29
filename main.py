@@ -20,6 +20,7 @@ from security import generate_secret_key, verify_secret_key
 # Import steganography functionality
 from llm_steganography.integration import (
     generate_steganographic_invitation,
+    regenerate_steganographic_invitation_with_key,
     extract_key_from_invitation,
     validate_invitation,
     generate_room_name,
@@ -250,8 +251,9 @@ async def regenerate_steganographic_text(data: Dict[str, Any] = Body(...)):
         if not room_name:
             room_name = active_keys[secret_key].get("room_name", generate_room_name())
         
-        # Generate new steganographic invitation with the same key
-        invitation_info = generate_steganographic_invitation(
+        # Regenerate steganographic invitation with the same key
+        invitation_info = regenerate_steganographic_invitation_with_key(
+            existing_secret_key=secret_key,  # Use existing key instead of generating new one
             room_name=room_name,
             custom_prompt=custom_prompt,
             model_name=model_name

@@ -84,6 +84,46 @@ def generate_steganographic_invitation(
     }
 
 
+def regenerate_steganographic_invitation_with_key(
+    existing_secret_key: str,
+    room_name: Optional[str] = None, 
+    custom_prompt: Optional[str] = None,
+    model_name: str = "facebook/opt-1.3b"
+) -> Dict[str, Any]:
+    """
+    Regenerate a room invitation with an existing secret key hidden in new text.
+    
+    Args:
+        existing_secret_key: The existing secret key to hide
+        room_name: Optional name for the room
+        custom_prompt: Optional custom prompt for text generation
+        model_name: Name of the model to use for text generation
+        
+    Returns:
+        Dictionary containing new invitation text with same key
+    """
+    # Always use custom prompt if provided
+    if custom_prompt:
+        prompt = custom_prompt
+    else:
+        # Default prompt if none provided
+        prompt = "Write a short message explaining secure file sharing benefits."
+    
+    # Load the selected model
+    if model_name in AVAILABLE_MODELS:
+        load_model(model_name)
+    
+    # Generate cover text with embedded existing secret key
+    invitation_text = generate_cover_text_with_secret(prompt, existing_secret_key)
+    
+    return {
+        "invitation_text": invitation_text,
+        "secret_key": existing_secret_key,
+        "has_hidden_key": True,
+        "model_used": model_name
+    }
+
+
 def extract_key_from_invitation(invitation_text: str) -> Optional[str]:
     """
     Extract a secret key from an invitation text.
