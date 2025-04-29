@@ -418,6 +418,7 @@ async function createRoom() {
             const senderEmail = document.getElementById('senderEmail').value.trim();
             const appPassword = document.getElementById('appPassword').value.trim();
             const receiverEmail = document.getElementById('receiverEmail').value.trim();
+            const allowMultipleConnections = document.getElementById('allowMultipleConnections').checked;
             
             if (!senderEmail || !appPassword || !receiverEmail) {
                 showNotification('Please fill all fields.', 'warning');
@@ -436,6 +437,7 @@ async function createRoom() {
                     sender_email: senderEmail,
                     sender_password: appPassword,
                     recipient_email: receiverEmail,
+                    allow_multiple_connections: allowMultipleConnections,
                     max_receivers: parseInt(maxReceivers)
                 })
             });

