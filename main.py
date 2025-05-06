@@ -1,6 +1,7 @@
 import logging
 import os
 import json
+import argparse
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Depends, Body, UploadFile, File, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -44,7 +45,13 @@ from encr import (
     generate_chacha_key
 )
 
-# Logging yapılandırması
+# Import face authentication
+from face_auth import face_auth
+
+# Import silent mode flag
+from llm_steganography.text_generation import SILENT_MODE
+
+# Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -53,7 +60,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Secure File Transfer API")
 
-# Static dosyaları sunmak için
+# Serve static files
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(static_dir, exist_ok=True)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -87,7 +94,7 @@ async def fastapi_http_exception_handler(request: Request, exc: FastAPIHTTPExcep
 temp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "temp")
 os.makedirs(temp_dir, exist_ok=True)
 
-# Aktif secret keyleri saklayacak dictionary
+# Dictionary to store active secret keys
 active_keys: Dict[str, Dict[str, Any]] = {}
 manager = ConnectionManager()
 
@@ -104,7 +111,7 @@ async def get_secure_transfer():
 
 @app.post("/api/create-room")
 async def create_room(data: Dict[str, Any] = Body({})):
-    """Yeni bir dosya transfer odası oluşturur ve secret key döndürür"""
+    """Creates a new file transfer room and returns a secret key"""
     # Get maximum receivers setting if provided
     max_receivers = data.get("max_receivers", 0)
     try:
@@ -136,7 +143,7 @@ async def create_room(data: Dict[str, Any] = Body({})):
 
 @app.get("/api/check-room")
 async def check_room(secret_key: str = Query(...)):
-    """Verilen secret key'in geçerli olup olmadığını kontrol eder"""
+    """Checks if the given secret key is valid"""
     if secret_key in active_keys:
         return JSONResponse(content={"status": "success", "valid": True})
     return JSONResponse(content={"status": "success", "valid": False})
@@ -156,6 +163,14 @@ async def api_get_available_models():
 async def create_steganographic_room(data: Dict[str, Any] = Body({})):
     """Create a new room with a secret key hidden in natural language text"""
     try:
+        # Check if we're in silent mode
+        from llm_steganography.text_generation import SILENT_MODE
+        if SILENT_MODE:
+            return JSONResponse(content={
+                "status": "error", 
+                "message": "Text steganography is disabled in silent mode"
+            }, status_code=400)
+            
         # Get optional prompt if provided
         custom_prompt = data.get("prompt")
         
@@ -546,18 +561,32 @@ async def decrypt_chacha_file(
         decrypted_data = decrypt_file_with_chacha(encrypted_package, chacha_key_bytes)
         logger.info(f"File successfully decrypted, decrypted size: {len(decrypted_data)} bytes")
         
-        # Generate a unique filename for the decrypted file
+        # Get original filename and handle non-ASCII characters properly
         original_filename = file.filename
+        
+        # URL decode the filename if it's URL encoded
+        try:
+            from urllib.parse import unquote, quote
+            original_filename = unquote(original_filename)
+        except Exception as e:
+            logger.warning(f"Error decoding filename: {str(e)}")
+        
         if original_filename.startswith("encrypted_"):
             original_filename = original_filename[10:]  # Remove "encrypted_" prefix
             
+        logger.info(f"Returning decrypted file: {original_filename}")
+        
+        # Set Content-Disposition with proper filename encoding for UTF-8 characters
+        # RFC 6266 for proper handling of non-ASCII filenames
+        filename_ascii = original_filename.encode('ascii', errors='replace').decode()
+        filename_utf8 = original_filename
+        content_disposition = f'attachment; filename="{filename_ascii}"; filename*=UTF-8\'\'{quote(filename_utf8)}'
+        
         # Create a response with the decrypted data directly
         headers = {
-            "Content-Disposition": f'attachment; filename="{original_filename}"',
+            "Content-Disposition": content_disposition,
             "Content-Type": "application/octet-stream"  # Force binary file download
         }
-            
-        logger.info(f"Returning decrypted file: {original_filename}")
         
         # Return the file directly in the response without saving to disk
         return Response(
@@ -572,7 +601,7 @@ async def decrypt_chacha_file(
 
 @app.websocket("/ws/sender/{secret_key}")
 async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
-    """Dosya gönderenler için WebSocket endpoint'i"""
+    """WebSocket endpoint for file senders"""
     if secret_key not in active_keys:
         await websocket.close(code=1008, reason="Invalid secret key")
         return
@@ -581,22 +610,28 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
     
     try:
         while True:
-            # Text veya binary mesaj alabiliriz
+            # Can receive either text or binary messages
             message = await websocket.receive()
             
-            # Text mesajı - genellikle kontrol mesajları JSON formatında
+            # Text message - usually control messages in JSON format
             if "text" in message:
                 try:
                     data = json.loads(message["text"])
+                    
+                    # Handle different message types
                     if data.get("type") == "start_transfer":
                         filename = data.get("filename", "unknown_file")
                         filesize = data.get("filesize", 0)
                         encryption_options = data.get("encryptionOptions", {})
                         await manager.start_file_transfer(websocket, filename, filesize, encryption_options)
+                    elif data.get("type") in ["offer", "answer", "ice-candidate"]:
+                        # WebRTC signaling message, relay it to the other peer
+                        await manager.relay_p2p_signal(websocket, data)
+                    
                 except json.JSONDecodeError:
                     continue
             
-            # Binary mesajı - dosya parçaları
+            # Binary message - file chunks
             elif "bytes" in message:
                 chunk_data = message["bytes"]
                 # Assume additional metadata is sent in the next text message
@@ -613,7 +648,7 @@ async def websocket_sender_endpoint(websocket: WebSocket, secret_key: str):
 
 @app.websocket("/ws/receiver/{secret_key}")
 async def websocket_receiver_endpoint(websocket: WebSocket, secret_key: str):
-    """Dosya alanlar için WebSocket endpoint'i"""
+    """WebSocket endpoint for file receivers"""
     if secret_key not in active_keys:
         await websocket.close(code=1008, reason="Invalid secret key")
         return
@@ -622,9 +657,20 @@ async def websocket_receiver_endpoint(websocket: WebSocket, secret_key: str):
     
     try:
         while True:
-            # Alıcılar genellikle sadece kontrol mesajları gönderir
-            data = await websocket.receive_json()
-            # Handle any specific receiver messages if needed
+            # Receivers typically only send control messages
+            message = await websocket.receive()
+            
+            # Check if it's a text message
+            if "text" in message:
+                try:
+                    data = json.loads(message["text"])
+                    
+                    # Handle WebRTC signaling messages
+                    if data.get("type") in ["offer", "answer", "ice-candidate"]:
+                        # Relay the signaling message to the other peer
+                        await manager.relay_p2p_signal(websocket, data)
+                except json.JSONDecodeError:
+                    continue
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
     except Exception as e:
@@ -815,5 +861,248 @@ async def create_email_room(data: Dict[str, Any] = Body(...)):
             "message": f"Error creating room: {str(e)}"
         }, status_code=500)
 
+# Face Authentication Endpoints
+@app.post("/api/create-face-auth-room")
+async def create_face_auth_room(
+    files: List[UploadFile] = File(...),
+    max_receivers: int = Form(0)
+):
+    """
+    Create a new room with face authentication.
+    
+    Args:
+        files: List of face images for authorized users
+        max_receivers: Maximum number of receivers allowed (0 = unlimited)
+        
+    Returns:
+        JSON response with room details
+    """
+    try:
+        # Validate that files were uploaded
+        if not files or len(files) == 0:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "No face images provided"
+            }, status_code=400)
+        
+        # Convert the uploaded files to bytes
+        face_images = []
+        for file in files:
+            # Validate that the file is an image
+            if not file.content_type.startswith('image/'):
+                continue
+            
+            # Read the file
+            image_data = await file.read()
+            face_images.append(image_data)
+        
+        if not face_images:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "No valid face images provided"
+            }, status_code=400)
+        
+        # Generate a new secret key
+        secret_key = generate_secret_key()
+        
+        # Create the face authentication room
+        success, message = face_auth.create_room_with_faces(secret_key, face_images)
+        
+        if not success:
+            return JSONResponse(content={
+                "status": "error",
+                "message": message
+            }, status_code=400)
+        
+        # Store room settings
+        active_keys[secret_key] = {
+            "created_at": "now", 
+            "last_activity": "now",
+            "max_receivers": max_receivers,
+            "auth_type": "face"
+        }
+        
+        # Register in connection manager for WebSocket enforcement
+        manager.register_room_settings(secret_key, {"max_receivers": max_receivers})
+        
+        logger.info(f"Created face auth room with key {secret_key[:8]}... and {len(face_images)} face(s)")
+        
+        return JSONResponse(content={
+            "status": "success",
+            "secret_key": secret_key,
+            "max_receivers": max_receivers,
+            "faces_count": len(face_images),
+            "message": message
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating face auth room: {str(e)}")
+        return JSONResponse(content={
+            "status": "error",
+            "message": f"Error creating room: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/add-face-to-room")
+async def add_face_to_room(
+    files: List[UploadFile] = File(...),
+    secret_key: str = Form(...)
+):
+    """
+    Add additional authorized faces to an existing room.
+    
+    Args:
+        files: List of face images for the new authorized user
+        secret_key: Secret key of the room to add faces to
+        
+    Returns:
+        JSON response with updated room details
+    """
+    try:
+        # Validate the secret key
+        if secret_key not in active_keys:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "Invalid room key"
+            }, status_code=400)
+        
+        # Validate that files were uploaded
+        if not files or len(files) == 0:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "No face images provided"
+            }, status_code=400)
+        
+        # Convert the uploaded files to bytes
+        face_images = []
+        for file in files:
+            # Validate that the file is an image
+            if not file.content_type.startswith('image/'):
+                continue
+            
+            # Read the file
+            image_data = await file.read()
+            face_images.append(image_data)
+        
+        if not face_images:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "No valid face images provided"
+            }, status_code=400)
+        
+        # Add faces to the room
+        success, message = face_auth.add_user_to_room(secret_key, face_images)
+        
+        if not success:
+            return JSONResponse(content={
+                "status": "error",
+                "message": message
+            }, status_code=400)
+        
+        # Update the room's last activity
+        active_keys[secret_key]["last_activity"] = "now"
+        
+        logger.info(f"Added {len(face_images)} face(s) to room {secret_key[:8]}...")
+        
+        return JSONResponse(content={
+            "status": "success",
+            "secret_key": secret_key,
+            "added_faces": len(face_images),
+            "message": message
+        })
+        
+    except Exception as e:
+        logger.error(f"Error adding faces to room: {str(e)}")
+        return JSONResponse(content={
+            "status": "error",
+                "message": f"Error adding faces: {str(e)}"
+        }, status_code=500)
+
+@app.post("/api/verify-face-for-rooms")
+async def verify_face_for_rooms(file: UploadFile = File(...)):
+    """
+    Verify if a face matches any authorized user in any room.
+    
+    Args:
+        file: Face image to verify
+        
+    Returns:
+        JSON response with list of rooms where the face is authorized
+    """
+    try:
+        # Validate that a file was uploaded
+        if not file:
+            return JSONResponse(content={
+                "status": "error",
+                "message": "No face image provided"
+            }, status_code=400)
+        
+        # Validate that the file is an image
+        if not file.content_type.startswith('image/'):
+            return JSONResponse(content={
+                "status": "error",
+                "message": "Uploaded file is not an image"
+            }, status_code=400)
+        
+        # Read the file
+        image_data = await file.read()
+        
+        # Verify the face
+        authorized_rooms = face_auth.verify_face_for_rooms(image_data)
+        
+        # Get room details for each authorized room
+        room_details = []
+        for room_id in authorized_rooms:
+            if room_id in active_keys:
+                room_details.append({
+                    "room_id": room_id,
+                    "max_receivers": active_keys[room_id].get("max_receivers", 0),
+                    "created_at": active_keys[room_id].get("created_at", "unknown")
+                })
+        
+        logger.info(f"Face verified for {len(authorized_rooms)} room(s)")
+        
+        return JSONResponse(content={
+            "status": "success",
+            "authorized_rooms": room_details,
+            "message": f"Face verified for {len(authorized_rooms)} room(s)"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error verifying face: {str(e)}")
+        return JSONResponse(content={
+            "status": "error",
+            "message": f"Error verifying face: {str(e)}"
+        }, status_code=500)
+
+# Get API status and silent mode status
+@app.get("/api/status")
+async def get_api_status():
+    """Get API status information and feature availability"""
+    from llm_steganography.text_generation import SILENT_MODE, transformer_model, TRANSFORMERS_AVAILABLE
+    
+    # Check if text steganography is available
+    text_stego_available = (not SILENT_MODE) and TRANSFORMERS_AVAILABLE and (transformer_model is not None)
+    
+    return JSONResponse(content={
+        "status": "success",
+        "silent_mode": SILENT_MODE,
+        "features": {
+            "text_steganography": text_stego_available,
+            "image_steganography": True
+        }
+    })
+
 if __name__ == "__main__":
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="Secure File Transfer API")
+    parser.add_argument("--silent", action="store_true", help="Run in silent mode (no model loading, text steganography disabled)")
+    args = parser.parse_args()
+    
+    # If silent mode is enabled, set the flag in the text_generation module
+    if args.silent:
+        from llm_steganography.text_generation import SILENT_MODE
+        import sys
+        sys.modules["llm_steganography.text_generation"].SILENT_MODE = True
+        logger.info("Running in silent mode. Text steganography is disabled.")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000)

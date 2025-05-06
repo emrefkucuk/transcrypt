@@ -32,6 +32,8 @@ class ConnectionManager:
         self.encryption_info: Dict[str, Dict] = {}
         # Store room settings
         self.room_settings: Dict[str, Dict] = {}
+        # Peer-to-peer connection mapping
+        self.p2p_peers: Dict[str, Dict[str, WebSocket]] = {}
     
     def register_room_settings(self, secret_key: str, settings: Dict[str, Any]) -> None:
         """Register settings for a room."""
@@ -49,6 +51,8 @@ class ConnectionManager:
         # Initialize the set of connections for this secret key if needed
         if secret_key not in self.active_connections:
             self.active_connections[secret_key] = set()
+            # Initialize p2p peers dictionary for this room
+            self.p2p_peers[secret_key] = {"sender": None, "receivers": set()}
         
         # Check if we have room settings and enforce max_receivers if needed
         if role == "receiver" and secret_key in self.room_settings:
@@ -70,6 +74,12 @@ class ConnectionManager:
         # Add the connection
         self.active_connections[secret_key].add(websocket)
         self.connection_info[websocket] = {"role": role, "secret_key": secret_key}
+        
+        # Register in P2P peers
+        if role == "sender":
+            self.p2p_peers[secret_key]["sender"] = websocket
+        else:
+            self.p2p_peers[secret_key]["receivers"].add(websocket)
         
         # Send welcome message to the new connection
         await websocket.send_json({
@@ -96,6 +106,13 @@ class ConnectionManager:
         secret_key = info["secret_key"]
         role = info["role"]
         
+        # Remove from P2P peers
+        if secret_key in self.p2p_peers:
+            if role == "sender" and self.p2p_peers[secret_key]["sender"] == websocket:
+                self.p2p_peers[secret_key]["sender"] = None
+            elif role == "receiver":
+                self.p2p_peers[secret_key]["receivers"].discard(websocket)
+        
         # Remove the connection
         if secret_key in self.active_connections:
             self.active_connections[secret_key].discard(websocket)
@@ -106,6 +123,7 @@ class ConnectionManager:
                 self.active_transfers.pop(secret_key, None)
                 self.file_chunks.pop(secret_key, None)
                 self.encryption_info.pop(secret_key, None)
+                self.p2p_peers.pop(secret_key, None)
                 logger.info(f"Room {secret_key[:8]}... closed as last client disconnected")
             else:
                 # Broadcast updated participant counts
@@ -144,6 +162,47 @@ class ConnectionManager:
         
         # Broadcast to all in the room
         await self.broadcast(self.active_connections[secret_key], status_message)
+
+    async def relay_p2p_signal(self, websocket: WebSocket, signal_data: dict) -> bool:
+        """Relay WebRTC signaling messages between peers."""
+        if websocket not in self.connection_info:
+            return False
+            
+        info = self.connection_info[websocket]
+        secret_key = info["secret_key"]
+        sender_role = info["role"]
+        
+        if secret_key not in self.p2p_peers:
+            return False
+            
+        logger.info(f"Relaying P2P signal from {sender_role}")
+        
+        # Determine the recipient(s) based on who sent the signal
+        if sender_role == "sender":
+            # Send to all receivers
+            receivers = self.p2p_peers[secret_key]["receivers"]
+            for receiver in receivers:
+                if receiver.client_state == WebSocketState.CONNECTED:
+                    try:
+                        await receiver.send_json({
+                            "type": "p2p-signal",
+                            "signal": signal_data
+                        })
+                    except Exception as e:
+                        logger.error(f"Error sending signal to receiver: {str(e)}")
+        else:
+            # Send to the sender
+            sender = self.p2p_peers[secret_key]["sender"]
+            if sender and sender.client_state == WebSocketState.CONNECTED:
+                try:
+                    await sender.send_json({
+                        "type": "p2p-signal",
+                        "signal": signal_data
+                    })
+                except Exception as e:
+                    logger.error(f"Error sending signal to sender: {str(e)}")
+        
+        return True
 
     async def start_file_transfer(self, websocket: WebSocket, filename: str, filesize: int, encryption_options=None):
         if websocket not in self.connection_info:

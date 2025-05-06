@@ -18,6 +18,8 @@ logger = logging.getLogger("text_generation")
 # Initialize model variables
 transformer_model = None
 tokenizer = None
+# Silent mode flag - when True, model won't be loaded automatically
+SILENT_MODE = False
 
 # Try to import transformers library - we'll handle the case if it's not installed
 try:
@@ -325,9 +327,5 @@ def predict_next_token_distribution(text: str) -> np.ndarray:
     
     return distribution
 
-# Try to load the model at module import time
-if TRANSFORMERS_AVAILABLE:
-    try:
-        load_model()
-    except Exception as e:
-        logger.warning(f"Could not load model at import time: {str(e)}")
+# Don't try to load model at module import time - we'll load it when needed
+# The main.py file will update SILENT_MODE before any function calls
