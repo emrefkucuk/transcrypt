@@ -1,14 +1,6 @@
 # Encrypted File Transfer
 
-Encrypted file transfer project for a Computer Security Project.
-
-## Features
-
-- Room creation with a secret key
-- Real-time file transfer with WebSocket connection
-- Sender/Receiver roles
-- Transfer progress information
-- Simple and user-friendly interface
+Encrypted file transfer project for a Computer Security project.
 
 ## Setup
 
@@ -44,3 +36,4 @@ python main.py
 - Cryptographically secure secret key generation
 - WebSocket connection validation
 - Client-side data integrity validation
+- Optional P2P
